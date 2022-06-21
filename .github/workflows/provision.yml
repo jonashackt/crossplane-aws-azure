@@ -14,9 +14,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@master
 
-      - name: Install kind (see https://kind.sigs.k8s.io)
+      - name: Install kind (see https://kind.sigs.k8s.io) & crossplane CLI
         run: |
           brew install kind
+          curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+          sudo mv kubectl-crossplane /usr/local/bin
 
       - name: Spin up kind cluster & try to use the cluster
         run: |
@@ -36,3 +38,4 @@ jobs:
         run: |
           helm list -n crossplane-system
           kubectl get all -n crossplane-system
+      
