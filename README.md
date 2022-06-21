@@ -1,4 +1,8 @@
 # crossplane-kind-eks
+[![Build Status](https://github.com/jonashackt/crossplane-kind-eks/workflows/provision/badge.svg)](https://github.com/jonashackt/crossplane-kind-eks/actions)
+[![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-kind-eks/blob/master/LICENSE)
+[![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
+
 Example project showing how to create EKS clusters using Crossplane in kind finally run by GitHub Actions
 
 
@@ -13,6 +17,7 @@ https://crossplane.io/docs/v1.8/concepts/overview.html
 * [Providers](https://crossplane.io/docs/v1.8/concepts/providers.html): are Packages that bundle a set of Managed Resources & controllers to provision infrastructure resources - all providers can be found on GitHub, e.g. [provider-aws](https://github.com/crossplane-contrib/provider-aws)
 * [Packages](https://crossplane.io/docs/v1.8/concepts/packages.html): OCI container images to handle distribution, version updates, dependency management & permissions for Providers & Configurations
 * [Composite Resources (XR)](https://crossplane.io/docs/v1.8/concepts/composition.html): compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by a `CompositeResourceDefinition` (XRD) (incl. optional Claims (XRC)), a `Composition` and configured by a `Configuration`
+* [Configuration](https://crossplane.io/docs/v1.8/getting-started/create-configuration.html): define your own Composite Resources (XRs) & package them via `kubectl crossplane build configuration` (now they are a Package) - and push them to an OCI registry via `kubectl crossplane push configuration`. With this Configurations can also be easily installed into other crossplane clusters.
 
 
 ### Composite Resources (XR)
@@ -31,14 +36,16 @@ If you're familiar with Terrafrom you can think of an XRD as similar to `variabl
 
 ## Getting started with Crossplane
 
+In order to use crossplane we'll need any kind of Kubernetes cluster to let it operate in. This management cluster with crossplane installed will then provision the defined infrastructure. Using any managed Kubernetes cluster like EKS, AKS and so on is possible - or even a local [Minikube](https://minikube.sigs.k8s.io/docs/start/), [kind](https://kind.sigs.k8s.io) or [k3d](https://k3d.io/).
+
 
 ### Fire up a K8s cluster with kind
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html
 
-Be sure to have https://kind.sigs.k8s.io , the package manager Helm and kubectl installed:
+Be sure to have kind, the package manager Helm and kubectl installed:
 
-```
+```shell
 brew install kind helm kubectl
 ```
 
@@ -101,3 +108,22 @@ https://crossplane.io/docs/v1.8/reference/configure.html
 https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html
 
 https://github.com/crossplane-contrib/provider-aws
+
+
+
+
+# Links
+
+https://crossplane.io/
+
+Intro post https://medium.com/@khelge/crossplane-7197ad200013
+
+Crossplane is based on OAM (3 roles: Developer, application operator & infrastructure operator) https://github.com/oam-dev/spec
+
+https://www.kloia.com/blog/production-ready-eks-cluster-with-crossplane
+
+https://www.forbes.com/sites/janakirammsv/2021/09/15/how-crossplane-transforms-kubernetes-into-a-universal-control-plane/
+
+> Crossplane essentially transforms Kubernetes into a universal control plane that can orchestrate the lifecycle of public cloud-based services such as virtual machines, database instances, Big Data clusters, machine learning jobs, and other managed services offered by the hyperscalers. 
+
+> Crossplane takes the concept of Infrastructure as Code (IaC) to the next level through its tight integration with Kubernetes.

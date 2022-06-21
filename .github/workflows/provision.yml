@@ -1,0 +1,24 @@
+name: provision
+
+on: [push]
+
+# env:
+#   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#   AWS_DEFAULT_REGION: 'eu-central-1'
+
+jobs:
+  provision-kind-with-crossplane:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - name: Install kind (see https://kind.sigs.k8s.io)
+        run: |
+          brew install kind
+
+      - name: Spin up kind cluster & try to use the cluster
+        run: |
+          kind create cluster --image kindest/node:v1.23.0 --wait 5m
+          kubectl get nodes
