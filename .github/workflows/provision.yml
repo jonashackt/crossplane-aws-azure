@@ -22,3 +22,17 @@ jobs:
         run: |
           kind create cluster --image kindest/node:v1.23.0 --wait 5m
           kubectl get nodes
+      
+      - name: Install crossplane via Helm
+        run: |
+          kubectl create namespace crossplane-system
+
+          helm repo add crossplane-stable https://charts.crossplane.io/stable
+          helm repo update
+
+          helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane
+
+      - name: Check crossplane status
+        run: |
+          helm list -n crossplane-system
+          kubectl get all -n crossplane-system
