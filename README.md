@@ -2,6 +2,22 @@
 Example project showing how to create EKS clusters using Crossplane in kind finally run by GitHub Actions
 
 
+Crossplane https://crossplane.io/ introduces a new way how to manage any cloud resource (beeing it Kubernetes-native or not). It's an alternative Infrastructure-as-Code tooling to Terraform, AWS CDK/Bicep or Pulumi and introduces a higher level of abstraction - based on Kubernetes CRDs.
+
+
+## Crossplane concepts
+
+https://crossplane.io/docs/v1.8/concepts/overview.html
+
+* [Managed Resourced (MR)](https://crossplane.io/docs/v1.8/concepts/managed-resources.html): Kubernetes custom resources (CRDs) that represent infrastructure primitives (mostly in cloud providers). All Crossplane Managed Resources could be found via https://doc.crds.dev/ 
+* [Providers](https://crossplane.io/docs/v1.8/concepts/providers.html): are Packages that bundle a set of Managed Resources & controllers to provision infrastructure resources - all providers can be found on GitHub, e.g. [provider-aws](https://github.com/crossplane-contrib/provider-aws)
+* [Packages](https://crossplane.io/docs/v1.8/concepts/packages.html): OCI container images to handle distribution, version updates, dependency management & permissions for Providers & Configurations
+* [Composite Resources (XR)](https://crossplane.io/docs/v1.8/concepts/composition.html): compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by a `CompositeResourceDefinition` (XRD) (incl. optional Claims (XRC)), a `Composition` and configured by a `Configuration`
+
+
+## Getting started with Crossplane
+
+
 ### Fire up a K8s cluster with kind
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html
@@ -52,3 +68,22 @@ NAME                                                 DESIRED   CURRENT   READY  
 replicaset.apps/crossplane-7c88c45998                1         1         1       69s
 replicaset.apps/crossplane-rbac-manager-8466dfb7fc   1         1         1       69s
 ```
+
+
+### Install Crossplane CLI
+
+```
+curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+sudo mv kubectl-crossplane /usr/local/bin
+```
+
+Now the `kubectl crossplane --help` command should be ready to use.
+
+
+### Configure Crossplane to access AWS
+
+https://crossplane.io/docs/v1.8/reference/configure.html
+
+https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html
+
+https://github.com/crossplane-contrib/provider-aws
