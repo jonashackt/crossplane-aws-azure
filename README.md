@@ -44,7 +44,7 @@ If you're familiar with Terrafrom you can think of an XRD as similar to `variabl
 In order to use crossplane we'll need any kind of Kubernetes cluster to let it operate in. This management cluster with crossplane installed will then provision the defined infrastructure. Using any managed Kubernetes cluster like EKS, AKS and so on is possible - or even a local [Minikube](https://minikube.sigs.k8s.io/docs/start/), [kind](https://kind.sigs.k8s.io) or [k3d](https://k3d.io/).
 
 
-### Fire up a K8s cluster with kind
+### Install prerequisites & fire up a K8s cluster with kind
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html
 
@@ -53,6 +53,16 @@ Be sure to have kind, the package manager Helm and kubectl installed:
 ```shell
 brew install kind helm kubectl
 ```
+
+Also we should install the crossplane CLI
+
+```
+curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+sudo mv kubectl-crossplane /usr/local/bin
+```
+
+Now the `kubectl crossplane --help` command should be ready to use.
+
 
 Now spin up a local kind cluster
 
@@ -95,15 +105,19 @@ replicaset.apps/crossplane-7c88c45998                1         1         1      
 replicaset.apps/crossplane-rbac-manager-8466dfb7fc   1         1         1       69s
 ```
 
+Before we can actually apply a Provider we have to make sure that crossplane is actually healthy and running. Therefore we can use the `kubectl wait` command like this:
 
-### Install Crossplane CLI
-
-```
-curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
-sudo mv kubectl-crossplane /usr/local/bin
+```shell
+kubectl wait --for=condition=ready pod -l app=crossplane --namespace crossplane-system --timeout=120s
 ```
 
-Now the `kubectl crossplane --help` command should be ready to use.
+Otherwise we will run into errors like this when applying a `Provider`:
+
+```shell
+error: resource mapping not found for name: "provider-aws" namespace: "" from "provider-aws.yaml": no matches for kind "Provider" in version "pkg.crossplane.io/v1"
+ensure CRDs are installed first
+```
+
 
 
 ### Configure Crossplane to access AWS
@@ -205,12 +219,7 @@ Before we can actually apply a `ProviderConfig` to our AWS provider we have to m
 kubectl wait --for=condition=Healthy=True --timeout=120s provider/provider-aws
 ```
 
-Otherwise we will run into errors like this when applying the `ProviderConfig` right after the Provider:
-
-```shell
-error: resource mapping not found for name: "provider-aws" namespace: "" from "provider-aws.yaml": no matches for kind "Provider" in version "pkg.crossplane.io/v1"
-ensure CRDs are installed first
-```
+Otherwise we may run into errors like this when applying the `ProviderConfig` right after the Provider.
 
 
 #### Create ProviderConfig to consume the Secret containing AWS credentials
