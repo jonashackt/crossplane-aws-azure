@@ -3,17 +3,17 @@
 [![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-kind-eks/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
-Example project showing how to create EKS clusters using Crossplane in kind finally run by GitHub Actions
+Example project showing how to create EKS clusters using crossplane in kind finally run by GitHub Actions
 
 
 Crossplane https://crossplane.io/ claims to be the "The cloud native control plane framework". It introduces a new way how to manage any cloud resource (beeing it Kubernetes-native or not). It's an alternative Infrastructure-as-Code tooling to Terraform, AWS CDK/Bicep or Pulumi and introduces a higher level of abstraction - based on Kubernetes CRDs.
 
 
-## Crossplane basic concepts
+## crossplane basic concepts
 
 https://crossplane.io/docs/v1.8/concepts/overview.html
 
-* [Managed Resourced (MR)](https://crossplane.io/docs/v1.8/concepts/managed-resources.html): Kubernetes custom resources (CRDs) that represent infrastructure primitives (mostly in cloud providers). All Crossplane Managed Resources could be found via https://doc.crds.dev/ 
+* [Managed Resourced (MR)](https://crossplane.io/docs/v1.8/concepts/managed-resources.html): Kubernetes custom resources (CRDs) that represent infrastructure primitives (mostly in cloud providers). All crossplane Managed Resources could be found via https://doc.crds.dev/ 
 * [Composite Resources (XR)](https://crossplane.io/docs/v1.8/concepts/composition.html): compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by:
     * a `CompositeResourceDefinition` (XRD)
     * and an optional `CompositeResourceClaims` (XRC)
@@ -29,17 +29,17 @@ https://crossplane.io/docs/v1.8/concepts/overview.html
 
 https://crossplane.io/docs/v1.8/concepts/composition.html#how-it-works
 
-> The first step towards using Composite Resources is configuring Crossplane so that it knows what XRs you’d like to exist, and what to do when someone creates one of those XRs. This is done using a `CompositeResourceDefinition` (XRD) resource and one or more `Composition` resources.
+> The first step towards using Composite Resources is configuring crossplane so that it knows what XRs you’d like to exist, and what to do when someone creates one of those XRs. This is done using a `CompositeResourceDefinition` (XRD) resource and one or more `Composition` resources.
 
 ![composition-how-it-works](screenshots/composition-how-it-works.svg)
 
-The platform team itself typically has the permissions to create XRs directly. Everyone else uses a lightweight proxy resource called `CompositeResourceClaim` (XC or simply "claim") to create them with Crossplane.
+The platform team itself typically has the permissions to create XRs directly. Everyone else uses a lightweight proxy resource called `CompositeResourceClaim` (XC or simply "claim") to create them with crossplane.
 
 If you're familiar with Terrafrom you can think of an XRD as similar to `variable` blocks of a Terrafrom module. The `Composition` could then be seen as the rest of the HCL code describing how to instrument those variables to create actual resources.
 
 
 
-## Getting started with Crossplane
+## Getting started with crossplane
 
 In order to use crossplane we'll need any kind of Kubernetes cluster to let it operate in. This management cluster with crossplane installed will then provision the defined infrastructure. Using any managed Kubernetes cluster like EKS, AKS and so on is possible - or even a local [Minikube](https://minikube.sigs.k8s.io/docs/start/), [kind](https://kind.sigs.k8s.io) or [k3d](https://k3d.io/).
 
@@ -130,8 +130,20 @@ aws_secret_access_key = $(aws configure get aws_secret_access_key)
 
 > Don't ever check this file into source control - it holds your AWS credentials! For this repository I added `*-creds.conf` to the [.gitignore](.gitignore) file. 
 
+If you're using a CI system like GitHub Actions (as this repository is based on), you need to have both `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` configured as Repository Secrets:
 
-#### Create Provider secret
+![github-actions-secrets](screenshots/github-actions-secrets.png)
+
+Also make sure to have your `Default region` configured locally - or as a `env:` variable in your CI system. All three needed variables [in GitHub Actions](.github/workflows/provision.yml) for example look like this:
+
+```yaml
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: 'eu-central-1'
+```
+
+#### Create AWS Provider secret
 
 Now we need to use the `aws-creds.conf` file to create the crossplane AWS Provider secret:
 
@@ -187,7 +199,7 @@ NAME           INSTALLED   HEALTHY   PACKAGE                           AGE
 provider-aws   True        Unknown   crossplane/provider-aws:v0.22.0   13s
 ```
 
-#### Create crossplane AWS ProviderConfig to consume the Secret containing AWS credentials
+#### Create ProviderConfig to consume the Secret containing AWS credentials
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure-the-provider
 
@@ -208,6 +220,8 @@ spec:
       name: aws-creds
       key: creds
 ```
+
+> Crossplane resources use the `ProviderConfig` named `default` if no specific ProviderConfig is specified, so this ProviderConfig will be the default for all AWS resources.
 
 The `secretRef.name` and `secretRef.key` has to match the fields of the already created Secret.
 
@@ -241,4 +255,4 @@ https://www.forbes.com/sites/janakirammsv/2021/09/15/how-crossplane-transforms-k
 
 Stacks and Applications: https://blog.crossplane.io/crossplane-v0-9-new-package-types-for-providers-stacks-and-applications/
 
-Argo + Crossplane https://morningspace.medium.com/using-crossplane-in-gitops-what-to-check-in-git-76c08a5ff0c4
+Argo + crossplane https://morningspace.medium.com/using-crossplane-in-gitops-what-to-check-in-git-76c08a5ff0c4

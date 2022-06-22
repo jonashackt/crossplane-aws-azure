@@ -2,10 +2,10 @@ name: provision
 
 on: [push]
 
-# env:
-#   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#   AWS_DEFAULT_REGION: 'eu-central-1'
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: 'eu-central-1'
 
 jobs:
   provision-kind-with-crossplane:
@@ -18,7 +18,7 @@ jobs:
         run: |
           brew install kind
 
-          echo "Install crossplane CLI & check if it's working"
+          echo "### Install crossplane CLI & check if it's working"
           curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
           sudo mv kubectl-crossplane /usr/local/bin
           kubectl crossplane --help
@@ -27,15 +27,15 @@ jobs:
         run: |
           kind create cluster --image kindest/node:v1.23.0 --wait 5m
 
-          echo "Let's try to access our kind cluster via kubectl"
+          echo "### Let's try to access our kind cluster via kubectl"
           kubectl get nodes
       
       - name: Install crossplane via Helm
         run: |
-          echo "Create a namespace for crossplane"
+          echo "### Create a namespace for crossplane"
           kubectl create namespace crossplane-system
 
-          echo "Install crossplane via Helm"
+          echo "### Install crossplane via Helm"
           helm repo add crossplane-stable https://charts.crossplane.io/stable
           helm repo update
           helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane
@@ -45,3 +45,19 @@ jobs:
           helm list -n crossplane-system
           kubectl get all -n crossplane-system
       
+      - name: Configure crossplane to access AWS
+        run: |
+          echo "### Create aws-creds.conf file"
+          echo "[default]
+          aws_access_key_id = $(aws configure get aws_access_key_id)
+          aws_secret_access_key = $(aws configure get aws_secret_access_key)
+          " > aws-creds.conf
+          
+          echo "### Create AWS Provider secret"
+          kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
+
+          echo "### Install the crossplane AWS Provider"
+          kubectl apply -f provider-aws.yaml
+
+          echo "### Create ProviderConfig to consume the Secret containing AWS credentials"
+          kubectl apply -f provider-config-aws.yaml
