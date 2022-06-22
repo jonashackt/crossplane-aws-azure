@@ -14,10 +14,15 @@ Crossplane https://crossplane.io/ claims to be the "The cloud native control pla
 https://crossplane.io/docs/v1.8/concepts/overview.html
 
 * [Managed Resourced (MR)](https://crossplane.io/docs/v1.8/concepts/managed-resources.html): Kubernetes custom resources (CRDs) that represent infrastructure primitives (mostly in cloud providers). All Crossplane Managed Resources could be found via https://doc.crds.dev/ 
-* [Providers](https://crossplane.io/docs/v1.8/concepts/providers.html): are Packages that bundle a set of Managed Resources & controllers to provision infrastructure resources - all providers can be found on GitHub, e.g. [provider-aws](https://github.com/crossplane-contrib/provider-aws)
+* [Composite Resources (XR)](https://crossplane.io/docs/v1.8/concepts/composition.html): compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by:
+    * a `CompositeResourceDefinition` (XRD)
+    * and an optional `CompositeResourceClaims` (XRC)
+    * a `Composition`
+    * and configured by a `Configuration`
 * [Packages](https://crossplane.io/docs/v1.8/concepts/packages.html): OCI container images to handle distribution, version updates, dependency management & permissions for Providers & Configurations
-* [Composite Resources (XR)](https://crossplane.io/docs/v1.8/concepts/composition.html): compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by a `CompositeResourceDefinition` (XRD) (incl. optional Claims (XRC)), a `Composition` and configured by a `Configuration`
-* [Configuration](https://crossplane.io/docs/v1.8/getting-started/create-configuration.html): define your own Composite Resources (XRs) & package them via `kubectl crossplane build configuration` (now they are a Package) - and push them to an OCI registry via `kubectl crossplane push configuration`. With this Configurations can also be easily installed into other crossplane clusters.
+    * [Providers](https://crossplane.io/docs/v1.8/concepts/providers.html): are Packages that bundle a set of Managed Resources & controllers to provision infrastructure resources - all providers can be found on GitHub, e.g. [provider-aws](https://github.com/crossplane-contrib/provider-aws) or on [docs.crds.dev](https://doc.crds.dev/github.com/crossplane/provider-aws). A [list of all available Providers](https://github.com/orgs/crossplane-contrib/repositories?type=all) can also be found on GitHub.
+    * [Configuration](https://crossplane.io/docs/v1.8/getting-started/create-configuration.html): define your own Composite Resources (XRs) & package them via `kubectl crossplane build configuration` (now they are a Package) - and push them to an OCI registry via `kubectl crossplane push configuration`. With this Configurations can also be easily installed into other crossplane clusters.
+
 
 
 ### Composite Resources (XR)
@@ -110,6 +115,111 @@ https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html
 https://github.com/crossplane-contrib/provider-aws
 
 
+#### Create aws-creds.conf file
+
+https://crossplane.io/docs/v1.8/getting-started/install-configure.html#get-aws-account-keyfile
+
+I assume here that you have [aws CLI installed and configured](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html). So that the command `aws configure` should work on your system. With this prepared we can create an `aws-creds.conf` file:
+
+```shell
+echo "[default]
+aws_access_key_id = $(aws configure get aws_access_key_id)
+aws_secret_access_key = $(aws configure get aws_secret_access_key)
+" > aws-creds.conf
+```
+
+> Don't ever check this file into source control - it holds your AWS credentials! For this repository I added `*-creds.conf` to the [.gitignore](.gitignore) file. 
+
+
+#### Create Provider secret
+
+Now we need to use the `aws-creds.conf` file to create the crossplane AWS Provider secret:
+
+```
+kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
+```
+
+If everything went well there should be a new `aws-creds` Secret ready:
+
+![provider-aws-secret](screenshots/provider-aws-secret.png)
+
+
+
+#### Install the crossplane AWS Provider
+
+https://crossplane.io/docs/v1.8/concepts/packages.html#installing-a-package
+
+We can install crossplane Packages (which can be Providers or Configurations) via the crossplane CLI with for example:
+
+```shell
+kubectl crossplane install provider crossplane/provider-aws:v0.22.0
+```
+
+Or we can create our own [provider-aws.yaml](provider-aws.yaml) file like this:
+
+> This `kind: Provider` with `apiVersion: pkg.crossplane.io/v1` is completely different from the `kind: Provider` which we want to consume! These use `apiVersion: meta.pkg.crossplane.io/v1`.
+
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws
+spec:
+  package: crossplane/provider-aws:v0.22.0
+  packagePullPolicy: IfNotPresent
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+```
+
+The `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy
+
+Now install the AWS provider using `kubectl`:
+
+```
+kubectl apply -f provider-aws.yaml
+```
+
+With this our first crossplane Provider has been installed. You may check it with `kubectl get provider`:
+
+```shell
+$ kubectl get provider
+NAME           INSTALLED   HEALTHY   PACKAGE                           AGE
+provider-aws   True        Unknown   crossplane/provider-aws:v0.22.0   13s
+```
+
+#### Create crossplane AWS ProviderConfig to consume the Secret containing AWS credentials
+
+https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure-the-provider
+
+https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html#optional-setup-aws-provider-manually
+
+Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-aws.yaml](provider-config-aws.yaml):
+
+```yaml
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-creds
+      key: creds
+```
+
+The `secretRef.name` and `secretRef.key` has to match the fields of the already created Secret.
+
+Apply it with:
+
+```shell
+kubectl apply -f provider-config-aws.yaml
+```
+
+
+
+
 
 
 # Links
@@ -127,3 +237,8 @@ https://www.forbes.com/sites/janakirammsv/2021/09/15/how-crossplane-transforms-k
 > Crossplane essentially transforms Kubernetes into a universal control plane that can orchestrate the lifecycle of public cloud-based services such as virtual machines, database instances, Big Data clusters, machine learning jobs, and other managed services offered by the hyperscalers. 
 
 > Crossplane takes the concept of Infrastructure as Code (IaC) to the next level through its tight integration with Kubernetes.
+
+
+Stacks and Applications: https://blog.crossplane.io/crossplane-v0-9-new-package-types-for-providers-stacks-and-applications/
+
+Argo + Crossplane https://morningspace.medium.com/using-crossplane-in-gitops-what-to-check-in-git-76c08a5ff0c4

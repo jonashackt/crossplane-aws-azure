@@ -1,3 +1,6 @@
+# Exclude credential configuration files like aws-creds.conf
+*-creds.conf
+
 # Logs
 logs
 *.log
