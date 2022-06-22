@@ -84,25 +84,12 @@ helm repo update
 helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane
 ```
 
-Check crossplane status with `helm list -n crossplane-system` and `kubectl get all -n crossplane-system`:
+Check crossplane version installed with `helm list -n crossplane-system` :
 
 ```shell
 $ helm list -n crossplane-system
 NAME      	NAMESPACE        	REVISION	UPDATED                              	STATUS  	CHART           	APP VERSION
 crossplane	crossplane-system	1       	2022-06-21 09:28:21.178357 +0200 CEST	deployed	crossplane-1.8.1	1.8.1
-
-$ kubectl get all -n crossplane-system
-NAME                                           READY   STATUS    RESTARTS   AGE
-pod/crossplane-7c88c45998-d26wl                1/1     Running   0          69s
-pod/crossplane-rbac-manager-8466dfb7fc-db9rb   1/1     Running   0          69s
-
-NAME                                      READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/crossplane                1/1     1            1           69s
-deployment.apps/crossplane-rbac-manager   1/1     1            1           69s
-
-NAME                                                 DESIRED   CURRENT   READY   AGE
-replicaset.apps/crossplane-7c88c45998                1         1         1       69s
-replicaset.apps/crossplane-rbac-manager-8466dfb7fc   1         1         1       69s
 ```
 
 Before we can actually apply a Provider we have to make sure that crossplane is actually healthy and running. Therefore we can use the `kubectl wait` command like this:
@@ -116,6 +103,23 @@ Otherwise we will run into errors like this when applying a `Provider`:
 ```shell
 error: resource mapping not found for name: "provider-aws" namespace: "" from "provider-aws.yaml": no matches for kind "Provider" in version "pkg.crossplane.io/v1"
 ensure CRDs are installed first
+```
+
+Finally check crossplane status with `kubectl get all -n crossplane-system`:
+
+```shell
+$ kubectl get all -n crossplane-system
+NAME                                           READY   STATUS    RESTARTS   AGE
+pod/crossplane-7c88c45998-d26wl                1/1     Running   0          69s
+pod/crossplane-rbac-manager-8466dfb7fc-db9rb   1/1     Running   0          69s
+
+NAME                                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/crossplane                1/1     1            1           69s
+deployment.apps/crossplane-rbac-manager   1/1     1            1           69s
+
+NAME                                                 DESIRED   CURRENT   READY   AGE
+replicaset.apps/crossplane-7c88c45998                1         1         1       69s
+replicaset.apps/crossplane-rbac-manager-8466dfb7fc   1         1         1       69s
 ```
 
 
