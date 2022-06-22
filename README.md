@@ -199,6 +199,20 @@ NAME           INSTALLED   HEALTHY   PACKAGE                           AGE
 provider-aws   True        Unknown   crossplane/provider-aws:v0.22.0   13s
 ```
 
+Before we can actually apply a `ProviderConfig` to our AWS provider we have to make sure that it's actually healthy and running. Therefore we can use the `kubectl wait` command like this:
+
+```shell
+kubectl wait --for=condition=Healthy=True --timeout=120s provider/provider-aws
+```
+
+Otherwise we will run into errors like this when applying the `ProviderConfig` right after the Provider:
+
+```shell
+error: resource mapping not found for name: "provider-aws" namespace: "" from "provider-aws.yaml": no matches for kind "Provider" in version "pkg.crossplane.io/v1"
+ensure CRDs are installed first
+```
+
+
 #### Create ProviderConfig to consume the Secret containing AWS credentials
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure-the-provider

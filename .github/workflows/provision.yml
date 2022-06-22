@@ -59,5 +59,8 @@ jobs:
           echo "### Install the crossplane AWS Provider"
           kubectl apply -f provider-aws.yaml
 
+          echo "### Wait until AWS Provider is up and running"
+          kubectl wait --for=condition=Healthy=True --timeout=120s provider/provider-aws
+
           echo "### Create ProviderConfig to consume the Secret containing AWS credentials"
           kubectl apply -f provider-config-aws.yaml
