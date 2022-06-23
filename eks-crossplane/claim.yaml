@@ -1,0 +1,17 @@
+---
+# Use the spec.group/spec.versions[0].name later defined in the XRD
+apiVersion: crossplane.jonashackt.io/v1alpha1
+kind: EKSCluster
+metadata:
+  # Only claims are namespaced, unlike XRs.
+  namespace: default
+  name: crossplane-managed-eks
+spec:
+  # The compositionSelector allows you to match a Composition by labels rather
+  # than naming one explicitly. It is used to set the compositionRef if none is
+  # specified explicitly.
+  compositionSelector:
+    matchLabels:
+      environment: development
+      region: eu-central
+      provider: aws

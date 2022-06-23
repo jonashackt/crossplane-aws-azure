@@ -1,0 +1,9 @@
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: eks-cluster
+  labels:
+    provider: aws
+    service: eks
+    compute: managed

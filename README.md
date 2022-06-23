@@ -6,26 +6,28 @@
 Example project showing how to create EKS clusters using crossplane in kind finally run by GitHub Actions
 
 
-Crossplane https://crossplane.io/ claims to be the "The cloud native control plane framework". It introduces a new way how to manage any cloud resource (beeing it Kubernetes-native or not). It's an alternative Infrastructure-as-Code tooling to Terraform, AWS CDK/Bicep or Pulumi and introduces a higher level of abstraction - based on Kubernetes CRDs.
+Crossplane https://crossplane.io/ claims to be the "The cloud native control plane framework". It introduces a new way how to manage any cloud resource (beeing it Kubernetes-native or not). It's an alternative Infrastructure-as-Code tooling to Terraform, AWS CDK/Bicep or Pulumi and introduces a higher level of abstraction - based on Kubernetes CRDs. 
+
+> No code required, it’s all declarative!
 
 
-## crossplane basic concepts
+# crossplane basic concepts
 
 https://crossplane.io/docs/v1.8/concepts/overview.html
 
 * [Managed Resourced (MR)](https://crossplane.io/docs/v1.8/concepts/managed-resources.html): Kubernetes custom resources (CRDs) that represent infrastructure primitives (mostly in cloud providers). All crossplane Managed Resources could be found via https://doc.crds.dev/ 
 * [Composite Resources (XR)](https://crossplane.io/docs/v1.8/concepts/composition.html): compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by:
-    * a `CompositeResourceDefinition` (XRD)
-    * and an optional `CompositeResourceClaims` (XRC)
-    * a `Composition`
+    * a `CompositeResourceDefinition` (XRD) (which defines an OpenAPI schema the `Composition` needs to be conform to)
+    * (optional) `CompositeResourceClaims` (XRC) (which is an abstraction of the XR for the application team to consume) - but is fantastic to hold the exact configuration parameters for the concrete resources you want to provision
+    * a `Composition` that describes the actual infrastructure primitives aka `Managed Resources` used to build the Composite Resource. One XRD could have multiple Compositions - e.g. to one for every environment like development, stating and production
     * and configured by a `Configuration`
 * [Packages](https://crossplane.io/docs/v1.8/concepts/packages.html): OCI container images to handle distribution, version updates, dependency management & permissions for Providers & Configurations
-    * [Providers](https://crossplane.io/docs/v1.8/concepts/providers.html): are Packages that bundle a set of Managed Resources & controllers to provision infrastructure resources - all providers can be found on GitHub, e.g. [provider-aws](https://github.com/crossplane-contrib/provider-aws) or on [docs.crds.dev](https://doc.crds.dev/github.com/crossplane/provider-aws). A [list of all available Providers](https://github.com/orgs/crossplane-contrib/repositories?type=all) can also be found on GitHub.
+    * [Providers](https://crossplane.io/docs/v1.8/concepts/providers.html): are Packages that bundle a set of Managed Resources & __a Controller to provision infrastructure resources__ - all providers can be found on GitHub, e.g. [provider-aws](https://github.com/crossplane-contrib/provider-aws) or on [docs.crds.dev](https://doc.crds.dev/github.com/crossplane/provider-aws). A [list of all available Providers](https://github.com/orgs/crossplane-contrib/repositories?type=all) can also be found on GitHub.
     * [Configuration](https://crossplane.io/docs/v1.8/getting-started/create-configuration.html): define your own Composite Resources (XRs) & package them via `kubectl crossplane build configuration` (now they are a Package) - and push them to an OCI registry via `kubectl crossplane push configuration`. With this Configurations can also be easily installed into other crossplane clusters.
 
 
 
-### Composite Resources (XR)
+## Composite Resources (XR)
 
 https://crossplane.io/docs/v1.8/concepts/composition.html#how-it-works
 
@@ -39,12 +41,12 @@ If you're familiar with Terrafrom you can think of an XRD as similar to `variabl
 
 
 
-## Getting started with crossplane
+# Getting started with crossplane
 
 In order to use crossplane we'll need any kind of Kubernetes cluster to let it operate in. This management cluster with crossplane installed will then provision the defined infrastructure. Using any managed Kubernetes cluster like EKS, AKS and so on is possible - or even a local [Minikube](https://minikube.sigs.k8s.io/docs/start/), [kind](https://kind.sigs.k8s.io) or [k3d](https://k3d.io/).
 
 
-### Install prerequisites & fire up a K8s cluster with kind
+## Install prerequisites & fire up a K8s cluster with kind
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html
 
@@ -71,7 +73,7 @@ kind create cluster --image kindest/node:v1.23.0 --wait 5m
 ```
 
 
-### Install Crossplane with Helm
+## Install Crossplane with Helm
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#install-crossplane
 
@@ -124,7 +126,7 @@ replicaset.apps/crossplane-rbac-manager-8466dfb7fc   1         1         1      
 
 
 
-### Configure Crossplane to access AWS
+## Configure Crossplane to access AWS
 
 https://crossplane.io/docs/v1.8/reference/configure.html
 
@@ -133,7 +135,7 @@ https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html
 https://github.com/crossplane-contrib/provider-aws
 
 
-#### Create aws-creds.conf file
+### Create aws-creds.conf file
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#get-aws-account-keyfile
 
@@ -161,7 +163,7 @@ env:
   AWS_DEFAULT_REGION: 'eu-central-1'
 ```
 
-#### Create AWS Provider secret
+### Create AWS Provider secret
 
 Now we need to use the `aws-creds.conf` file to create the crossplane AWS Provider secret:
 
@@ -175,7 +177,7 @@ If everything went well there should be a new `aws-creds` Secret ready:
 
 
 
-#### Install the crossplane AWS Provider
+### Install the crossplane AWS Provider
 
 https://crossplane.io/docs/v1.8/concepts/packages.html#installing-a-package
 
@@ -226,7 +228,7 @@ kubectl wait --for=condition=Healthy=True --timeout=120s provider/provider-aws
 Otherwise we may run into errors like this when applying the `ProviderConfig` right after the Provider.
 
 
-#### Create ProviderConfig to consume the Secret containing AWS credentials
+### Create ProviderConfig to consume the Secret containing AWS credentials
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure-the-provider
 
@@ -258,6 +260,56 @@ Apply it with:
 kubectl apply -f provider-config-aws.yaml
 ```
 
+# Provision an EKS cluster with crossplane
+
+__The crossplane core Controller and the Provider AWS Controller should now ready to provision any infrastructure component in AWS!__
+
+So in order to maximise the Inception let's provision an EKS based Kubernetes cluster in AWS with our crossplane Kubernetes cluster :) 
+
+A EKS cluster is a complex AWS construct leveraging different basic AWS services. That's exactly what a crossplane Composite Resource (XR) is all about. So let's create our own Composite Resource.
+
+
+## Defining all Composite Resource components to provide an AWS EKS cluster
+
+https://crossplane.io/docs/v1.8/concepts/composition.html#defining-composite-resources
+
+> A CompositeResourceDefinition (or XRD) defines the type and schema of your XR. It lets Crossplane know that you want a particular kind of XR to exist, and what fields that XR should have.
+
+Since defining your own CompositeResourceDefinitions and Compositions is the main work todo with crossplane, it's always good to know the full Reference documentation which can be found here https://crossplane.io/docs/v1.8/reference/composition.html
+
+One of the things to know is that crossplane automatically injects some common 'machinery' into the manifests of the XRDs and Compositions: https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
+
+
+### Craft a Composite Resource (XR) or Claim (XRC)
+
+Crossplane could look quite intimidating when having a first look. There are few guides around to show how to approach a setup when using crossplane the first time. For me I read lots of docs - and in the end found, that starting by crafting the Composite Resource (XR) or a corresponding Claim (XRC) might be a great option. Since we get ourselves into thinking what we actually want to provision. You can choose between writing an XR __OR__ XRC! You don't need both, since the XR will be generated from the XRC, if you choose to craft a XRC.
+
+https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
+
+Since we want to create a AWS EKS cluster, here's an suggestion for an [claim.yaml](eks-crossplane/claim.yaml):
+
+```yaml
+
+```
+
+
+
+### Defining a CompositeResourceDefinition (XRD) for our EKS cluster
+
+All possible fields an XRD can have are documented here:
+
+https://crossplane.io/docs/v1.8/reference/composition.html#compositeresourcedefinitions
+
+The field `spec.versions.schema` must contain a OpenAPI schema, which is similar to the ones used by any Kubernetes CRDs. They determine what fields the XR (and claim) will have. The full CRD documentation and a guide on how to write OpenAPI schemas could be found in the Kubernetes docs: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
+
+Note that crossplane will be automatically extended this section. Therefore the following fields are used by crossplane and will be ignored if they're found in the schema:
+
+    spec.resourceRef
+    spec.resourceRefs
+    spec.claimRef
+    spec.writeConnectionSecretToRef
+    status.conditions
+    status.connectionDetails
 
 
 
@@ -279,7 +331,32 @@ https://www.forbes.com/sites/janakirammsv/2021/09/15/how-crossplane-transforms-k
 
 > Crossplane takes the concept of Infrastructure as Code (IaC) to the next level through its tight integration with Kubernetes.
 
+Intro Slides: https://docs.google.com/presentation/d/1PxZweRpB6HElxd9qGK1McboGZ1kluCDCS5qxgYnX5f0/edit#slide=id.g8801599ecb_2_169
 
-Stacks and Applications: https://blog.crossplane.io/crossplane-v0-9-new-package-types-for-providers-stacks-and-applications/
+
+Promoted from sandbox to incubation by the CNCF: https://blog.crossplane.io/crossplane-cncf-incubation/ 
+
+Crossplane vs. Terraform: https://blog.crossplane.io/crossplane-vs-terraform/
+
+
+
+
+
+https://www.techtarget.com/searchitoperations/news/252508176/Crossplane-project-could-disrupt-infrastructure-as-code
+
 
 Argo + crossplane https://morningspace.medium.com/using-crossplane-in-gitops-what-to-check-in-git-76c08a5ff0c4
+
+
+
+VMWare support https://blog.crossplane.io/adding-vmware-support-to-crossplane-using-terraform/
+
+
+### Crossplane + AWS
+
+https://aws.amazon.com/blogs/containers/gitops-model-for-provisioning-and-bootstrapping-amazon-eks-clusters-using-crossplane-and-argo-cd/
+
+> Crossplane’s infrastructure provider for AWS relies on code generated by the AWS Go Code Generator, which is also used by [AWS Controllers for Kubernetes (ACK)](https://github.com/aws-controllers-k8s/community). 
+
+https://www.kloia.com/blog/production-ready-eks-cluster-with-crossplane
+
