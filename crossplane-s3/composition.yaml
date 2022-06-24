@@ -2,7 +2,7 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: eks-cluster
+  name: s3-bucket
   labels:
     # An optional convention is to include a label of the XRD. This allows
     # easy discovery of compatible Compositions.

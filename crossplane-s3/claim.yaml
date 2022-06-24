@@ -1,11 +1,11 @@
 ---
 # Use the spec.group/spec.versions[0].name defined in the XRD
 apiVersion: crossplane.jonashackt.io/v1alpha1
-kind: EKSCluster
+kind: S3Bucket
 metadata:
   # Only claims are namespaced, unlike XRs.
   namespace: default
-  name: managed-eks
+  name: managed-s3
 spec:
   # The compositionSelector allows you to match a Composition by labels rather
   # than naming one explicitly. It is used to set the compositionRef if none is
@@ -18,11 +18,10 @@ spec:
   # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
   # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
   writeConnectionSecretToRef:
-    name: managed-eks-connection-details
+    name: managed-s3-connection-details
   # Parameters for the Composition to provide the Managed Resources (MR) with
   # to create the actual infrastructure components
   parameters:
     region: eu-central-1
-    k8s-version: "1.21"
-    workers-size: 2
+
 

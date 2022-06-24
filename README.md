@@ -10,6 +10,30 @@ Crossplane https://crossplane.io/ claims to be the "The cloud native control pla
 
 > No code required, it’s all declarative!
 
+Litterally the best intro post to crossplane for me was https://blog.crossplane.io/crossplane-vs-cloud-infrastructure-addons/ - here the real key benefits especially compared to other tools are described. Without marketing blabla. If you love deep dives, I can also recommend Nate Reid's blog https://vrelevant.net/ who works as Staff Solutions Engineer at Upbound.
+
+
+# Comparing Crossplane to Cloud provider infrastructure addons
+
+
+Crossplane can be also compared to AWS Controllers for Kubernetes (ACK) https://aws.amazon.com/blogs/containers/aws-controllers-for-kubernetes-ack/, Azure Service Operator for Kubernetes (ASO) https://github.com/Azure/azure-service-operator or Google Config Connector https://cloud.google.com/config-connector/docs/overview, which all enable the management of cloud resources through the Kubernetes API. Crossplane providers are even generated from ACK and ASO https://blog.crossplane.io/accelerating-crossplane-provider-coverage-with-ack-and-azure-code-generation-towards-100-percent-coverage-of-all-cloud-services/
+
+> The Crossplane community believes that the typical developer using Kubernetes to deploy their application shouldn’t have to deal with low level infrastructure APIs. 
+
+Crossplane claims to be different:
+
+> Drawing on our experiences as platform builders, SREs, and application developers we’ve designed Crossplane as a toolkit to build your own custom resources on top of any API - often those of the cloud providers. We think this approach is critical to enable usable self-service infrastructure in Kubernetes.
+
+https://blog.crossplane.io/crossplane-vs-cloud-infrastructure-addons/
+
+
+So it's all about effective and usable self-service infrastructure!
+
+
+
+Order Pizza with crossplane https://blog.crossplane.io/providers-101-ordering-pizza-with-kubernetes-and-crossplane/
+
+
 
 # crossplane basic concepts
 
@@ -21,7 +45,7 @@ https://crossplane.io/docs/v1.8/concepts/overview.html
     * (optional) `CompositeResourceClaims` (XRC) (which is an abstraction of the XR for the application team to consume) - but is fantastic to hold the exact configuration parameters for the concrete resources you want to provision
     * a `Composition` that describes the actual infrastructure primitives aka `Managed Resources` used to build the Composite Resource. One XRD could have multiple Compositions - e.g. to one for every environment like development, stating and production
     * and configured by a `Configuration`
-* [Packages](https://crossplane.io/docs/v1.8/concepts/packages.html): OCI container images to handle distribution, version updates, dependency management & permissions for Providers & Configurations
+* [Packages](https://crossplane.io/docs/v1.8/concepts/packages.html): OCI container images to handle distribution, version updates, dependency management & permissions for Providers & Configurations. Packages were formerly named `Stacks`.
     * [Providers](https://crossplane.io/docs/v1.8/concepts/providers.html): are Packages that bundle a set of Managed Resources & __a Controller to provision infrastructure resources__ - all providers can be found on GitHub, e.g. [provider-aws](https://github.com/crossplane-contrib/provider-aws) or on [docs.crds.dev](https://doc.crds.dev/github.com/crossplane/provider-aws). A [list of all available Providers](https://github.com/orgs/crossplane-contrib/repositories?type=all) can also be found on GitHub.
     * [Configuration](https://crossplane.io/docs/v1.8/getting-started/create-configuration.html): define your own Composite Resources (XRs) & package them via `kubectl crossplane build configuration` (now they are a Package) - and push them to an OCI registry via `kubectl crossplane push configuration`. With this Configurations can also be easily installed into other crossplane clusters.
 
@@ -38,6 +62,8 @@ https://crossplane.io/docs/v1.8/concepts/composition.html#how-it-works
 The platform team itself typically has the permissions to create XRs directly. Everyone else uses a lightweight proxy resource called `CompositeResourceClaim` (XC or simply "claim") to create them with crossplane.
 
 If you're familiar with Terrafrom you can think of an XRD as similar to `variable` blocks of a Terrafrom module. The `Composition` could then be seen as the rest of the HCL code describing how to instrument those variables to create actual resources.
+
+Composite Resources can also be nested together, which allows for higher level abstractions and better separation of concerns. Think of an AWS EKS cluster where you need lot's of network / subnetting setup (which can form one XR) and the actual EKS cluster creation with NodeGroups etc (which would be the XR using the networking XR). More in-depth details on nested XRs can be found here https://vrelevant.net/crossplane-beyond-the-basics-nested-xrs-and-composition-selectors/ 
 
 
 
@@ -222,7 +248,7 @@ provider-aws   True        Unknown   crossplane/provider-aws:v0.22.0   13s
 Before we can actually apply a `ProviderConfig` to our AWS provider we have to make sure that it's actually healthy and running. Therefore we can use the `kubectl wait` command like this:
 
 ```shell
-kubectl wait --for=condition=Healthy=True --timeout=120s provider/provider-aws
+kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
 ```
 
 Otherwise we may run into errors like this when applying the `ProviderConfig` right after the Provider.
@@ -260,6 +286,17 @@ Apply it with:
 kubectl apply -f provider-config-aws.yaml
 ```
 
+
+
+# Prepare your IDE to help understand crossplane manifests
+
+https://blog.upbound.io/moving-crossplane-package-authoring-from-plain-yaml-to-ide-aided-development/
+
+Upbound VS Code plugin https://blog.upbound.io/crossplane-vscode-plugin-announcement/
+
+![upbound-vscode-extension](screenshots/upbound-vscode-extension.png)
+
+
 # Provision an EKS cluster with crossplane
 
 __The crossplane core Controller and the Provider AWS Controller should now ready to provision any infrastructure component in AWS!__
@@ -289,7 +326,33 @@ https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-a
 Since we want to create a AWS EKS cluster, here's an suggestion for an [claim.yaml](eks-crossplane/claim.yaml):
 
 ```yaml
-
+---
+# Use the spec.group/spec.versions[0].name later defined in the XRD
+apiVersion: crossplane.jonashackt.io/v1alpha1
+kind: EKSCluster
+metadata:
+  # Only claims are namespaced, unlike XRs.
+  namespace: default
+  name: managed-eks
+spec:
+  # The compositionSelector allows you to match a Composition by labels rather
+  # than naming one explicitly. It is used to set the compositionRef if none is
+  # specified explicitly.
+  compositionSelector:
+    matchLabels:
+      environment: development
+      region: eu-central
+      provider: aws
+  # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
+  # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
+  writeConnectionSecretToRef:
+    name: managed-eks-connection-details
+  # Parameters for the Composition to provide the Managed Resources (MR) with
+  # to create the actual infrastructure components
+  parameters:
+    region: eu-central-1
+    k8s-version: "1.21"
+    workers-size: 2
 ```
 
 
@@ -312,6 +375,47 @@ Note that crossplane will be automatically extended this section. Therefore the 
     status.connectionDetails
 
 
+
+
+# Higher level abstractions - or why it is so hard to write your own Compositions
+
+Looking only at the crossplane docs and blog I thought something is missing: A curated library of higher level abstractions (like Pulumi Crosswalk). First initiatives from cloud vendors like AWS Blueprints for Crossplane: https://aws.amazon.com/blogs/opensource/introducing-aws-blueprints-for-crossplane/
+
+But then I found the Upbound blog - and finally stumbled upon the __Upbound Platform Reference Architectures__ https://blog.upbound.io/azure-reference-platform/ which are intended as
+
+> foundations to help accelerate understanding and application of Crossplane within your organization
+
+
+### Use Upbound Platform Reference Architecture AWS to provision a EKS cluster
+
+__What I didn't wanted to do is to duplicate some code__ into my `Composition` from all those sources I found (mainly this https://www.kloia.com/blog/production-ready-eks-cluster-with-crossplane, this https://aws.amazon.com/blogs/containers/gitops-model-for-provisioning-and-bootstrapping-amazon-eks-clusters-using-crossplane-and-argo-cd/ and https://aws.amazon.com/blogs/opensource/introducing-aws-blueprints-for-crossplane/) about provisioning a EKS cluster with crossplane. 
+
+
+
+
+### Install platform-ref-aws
+
+https://github.com/upbound/platform-ref-aws#install-the-platform-configuration
+
+
+
+
+# Conclusion
+
+Crossplane really promising
+
+
+
+
+Transforming Terraform code into Crossplane CRDs is now possible using crossplane generator Terrajet https://blog.crossplane.io/announcing-terrajet/
+
+
+
+Crossplane's Roadmap can be viewed as GitHub project board https://github.com/orgs/crossplane/projects?type=classic There are interesting issues for the future:
+
+Crossplane and ArgoCD integration issues: https://github.com/crossplane/crossplane/issues/2773
+
+Follow the crossplane & Upbound blogs which provides the great insights https://blog.crossplane.io and https://blog.upbound.io/
 
 
 
@@ -360,3 +464,32 @@ https://aws.amazon.com/blogs/containers/gitops-model-for-provisioning-and-bootst
 
 https://www.kloia.com/blog/production-ready-eks-cluster-with-crossplane
 
+
+
+
+AWS Blueprints for Crossplane: 
+
+https://aws.amazon.com/blogs/opensource/introducing-aws-blueprints-for-crossplane/
+
+> Writing your first Composition and debugging can be intimidating.
+
+And it's quite a doublicate effort IMHO compared to other tools like Pulumi that provide higher level abstractions including well-architectured best practices (like Pulumi https://www.pulumi.com/docs/guides/crosswalk/aws/)
+
+https://github.com/aws-samples/crossplane-aws-blueprints
+
+
+
+### Stacks now called Packages
+
+https://github.com/crossplane/crossplane/blob/master/design/design-doc-composition.md
+
+>  Note that Crossplane packages were formerly known as 'Stacks'. This term has been rescoped to refer specifically to a package of infrastructure configuration but is frequently synonymous with packages in historical design documents and some remaining Crossplane APIs.
+
+
+## Others
+
+#### KUTTL - KUbernetes Test TooL
+
+https://kuttl.dev/
+
+example: https://github.com/aws-samples/crossplane-aws-blueprints/blob/main/tests/kuttl/test-suite.yaml
