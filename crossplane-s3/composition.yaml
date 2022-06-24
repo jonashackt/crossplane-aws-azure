@@ -2,7 +2,7 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: s3-bucket
+  name: s3bucket
   labels:
     # An optional convention is to include a label of the XRD. This allows
     # easy discovery of compatible Compositions.
@@ -10,17 +10,49 @@ metadata:
     # The following label marks this Composition for AWS. This label can 
     # be used in 'compositionSelector' in an XR or Claim.
     provider: aws
-    # Custom labels
-    service: eks
-    compute: managed
 spec:
   # Each Composition must declare that it is compatible with a particular type
   # of Composite Resource using its 'compositeTypeRef' field. The referenced
   # version must be marked 'referenceable' in the XRD that defines the XR.
   compositeTypeRef:
     apiVersion: crossplane.jonashackt.io/v1alpha1
-    kind: XEKSCluster
+    kind: XS3Bucket
+  
   # When an XR is created in response to a claim Crossplane needs to know where
   # it should create the XR's connection secret. This is configured using the
   # 'writeConnectionSecretsToNamespace' field.
   writeConnectionSecretsToNamespace: crossplane-system
+  
+  # Each Composition must specify at least one composed resource template.
+  resources:
+    
+    # Providing a unique name for each entry is good practice.
+    # Only identifies the resources entry within the Composition. Required in future crossplane API versions.
+    - name: bucket
+      base:
+        # see https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.18.1
+        apiVersion: s3.aws.crossplane.io/v1beta1
+        kind: Bucket
+        metadata: {}
+        spec:
+          forProvider:
+            # public-read should enable public access for static website hosting
+            # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket
+            acl: "public-read"
+          # This must match with the metadata.name of our configure Provider in provider-aws.yaml
+          providerConfigRef:
+            name: provider-aws
+          deletionPolicy: Delete
+      
+      # Each resource can optionally specify a set of 'patches' that copy fields
+      # from (or to) the XR.
+      patches:
+        # All those fieldPath refer to XR or Claim spec.parameters
+        - fromFieldPath: "spec.bucketName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.region"
+          toFieldPath: "spec.forProvider.locationConstraint"
+  
+  # If you find yourself repeating patches a lot you can group them as a named
+  # 'patch set' then use a PatchSet type patch to reference them.
+  #patchSets:

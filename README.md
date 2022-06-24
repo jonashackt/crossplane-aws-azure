@@ -35,6 +35,13 @@ Order Pizza with crossplane https://blog.crossplane.io/providers-101-ordering-pi
 
 
 
+
+Crossplane also enables effective multi-cloud interoperability: https://next.redhat.com/2020/10/29/production-ready-deployments-using-the-crossplane-operator-to-manage-and-provision-cloud-native-services/
+
+
+
+
+
 # crossplane basic concepts
 
 https://crossplane.io/docs/v1.8/concepts/overview.html
@@ -297,9 +304,259 @@ Upbound VS Code plugin https://blog.upbound.io/crossplane-vscode-plugin-announce
 ![upbound-vscode-extension](screenshots/upbound-vscode-extension.png)
 
 
+
+
+# Provision a S3 Bucket with crossplane
+
+__The crossplane core Controller and the Provider AWS Controller should now be ready to provision any infrastructure component in AWS!__
+
+You heard right: we don't create a Kubernetes based infrastructure component - but we start with a simple S3 Bucket.
+
+Therefore we can have a look into the crossplane AWS provider API docs: https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.18.1
+
+
+## Defining all Composite Resource components to provide an AWS EKS cluster
+
+https://crossplane.io/docs/v1.8/concepts/composition.html#defining-composite-resources
+
+> A CompositeResourceDefinition (or XRD) defines the type and schema of your XR. It lets Crossplane know that you want a particular kind of XR to exist, and what fields that XR should have.
+
+Since defining your own CompositeResourceDefinitions and Compositions is the main work todo with crossplane, it's always good to know the full Reference documentation which can be found here https://crossplane.io/docs/v1.8/reference/composition.html
+
+One of the things to know is that crossplane automatically injects some common 'machinery' into the manifests of the XRDs and Compositions: https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
+
+
+### Craft a Composite Resource (XR) or Claim (XRC)
+
+Crossplane could look quite intimidating when having a first look. There are few guides around to show how to approach a setup when using crossplane the first time. For me I read lots of docs - and in the end found, that starting by crafting the Composite Resource (XR) or a corresponding Claim (XRC) might be a great option. Since we get ourselves into thinking what we actually want to provision. You can choose between writing an XR __OR__ XRC! You don't need both, since the XR will be generated from the XRC, if you choose to craft a XRC.
+
+https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
+
+Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-s3/claim.yaml):
+
+```yaml
+---
+# Use the spec.group/spec.versions[0].name defined in the XRD
+apiVersion: crossplane.jonashackt.io/v1alpha1
+kind: S3Bucket
+metadata:
+  # Only claims are namespaced, unlike XRs.
+  namespace: default
+  name: managed-s3
+spec:
+  # The compositionSelector allows you to match a Composition by labels rather
+  # than naming one explicitly. It is used to set the compositionRef if none is
+  # specified explicitly.
+  compositionSelector:
+    matchLabels:
+      environment: development
+      region: eu-central
+      provider: aws
+  # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
+  # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
+  writeConnectionSecretToRef:
+    name: managed-s3-connection-details
+  # Parameters for the Composition to provide the Managed Resources (MR) with
+  # to create the actual infrastructure components
+  parameters:
+    bucketName: microservice-ui-nuxt-js-static-bucket
+    region: eu-central-1
+```
+
+
+
+### Defining a CompositeResourceDefinition (XRD) for our S3 Bucket
+
+All possible fields an XRD can have are documented here:
+
+https://crossplane.io/docs/v1.8/reference/composition.html#compositeresourcedefinitions
+
+The field `spec.versions.schema` must contain a OpenAPI schema, which is similar to the ones used by any Kubernetes CRDs. They determine what fields the XR (and claim) will have. The full CRD documentation and a guide on how to write OpenAPI schemas could be found in the Kubernetes docs: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
+
+Note that crossplane will be automatically extended this section. Therefore the following fields are used by crossplane and will be ignored if they're found in the schema:
+
+    spec.resourceRef
+    spec.resourceRefs
+    spec.claimRef
+    spec.writeConnectionSecretToRef
+    status.conditions
+    status.connectionDetails
+
+
+So our Composite Resource Definition (XRD) for our S3 Bucket could look like [crossplane-s3/xrd.yaml](crossplane-s3/xrd.yaml):
+
+```yaml
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  # XRDs must be named 'x<plural>.<group>'
+  name: xs3buckets.crossplane.jonashackt.io
+spec:
+  # This XRD defines an XR in the 'crossplane.jonashackt.io' API group.
+  # The XR or Claim must use this group together with the spec.versions[0].name as it's apiVersion, like this:
+  # 'crossplane.jonashackt.io/v1alpha1'
+  group: crossplane.jonashackt.io
+  
+  # XR names should always be prefixed with an 'X'
+  names:
+    kind: XS3Bucket
+    plural: xs3buckets
+  
+  # This type of XR offers a claim, which should have the same name without the 'X' prefix
+  claimNames:
+    kind: S3Bucket
+    plural: s3buckets
+  
+  # The keys the XR writes to it's connection secret
+  # which will act as a filter during aggregation of the connection secret from
+  # composed resources.
+  connectionSecretKeys:
+    - secretKey
+    - accessKey
+    - host
+  
+  # default Composition when none is specified (must match metadata.name of a provided Composition)
+  # e.g. in composition.yaml
+  defaultCompositionRef:
+    name: s3bucket
+
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    # OpenAPI schema (like the one used by Kubernetes CRDs). Determines what fields
+    # the XR (and claim) will have. Will be automatically extended by crossplane.
+    # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
+    # for full CRD documentation and guide on how to write OpenAPI schemas
+    schema:
+      openAPIV3Schema:
+      type: object
+      properties:
+        spec:
+          type: object
+          # We define 2 needed parameters here one has to provide as XR or Claim spec.parameters
+          properties:
+            bucketName:
+              type: string
+            region:
+              type: string
+          required:
+            - bucketName
+            - region
+```
+
+
+
+### Craft a Composition to manage our needed cloud resources
+
+The main work in crossplane has to be done crafting the Compositions. This is because they interact with the infrastructure primitives the cloud provider APIs provide.
+
+Detailled docs to many of the possible manifest configurations can be found here https://crossplane.io/docs/v1.8/reference/composition.html#compositions
+
+A Composite to manage an S3 Bucket in AWS with public access for static website hosting could for example look like this [crossplane-s3/composition.yaml](crossplane-s3/composition.yaml):
+
+```yaml
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: s3bucket
+  labels:
+    # An optional convention is to include a label of the XRD. This allows
+    # easy discovery of compatible Compositions.
+    crossplane.io/xrd: xeksclusters.crossplane.jonashackt.io
+    # The following label marks this Composition for AWS. This label can 
+    # be used in 'compositionSelector' in an XR or Claim.
+    provider: aws
+spec:
+  # Each Composition must declare that it is compatible with a particular type
+  # of Composite Resource using its 'compositeTypeRef' field. The referenced
+  # version must be marked 'referenceable' in the XRD that defines the XR.
+  compositeTypeRef:
+    apiVersion: crossplane.jonashackt.io/v1alpha1
+    kind: XS3Bucket
+  
+  # When an XR is created in response to a claim Crossplane needs to know where
+  # it should create the XR's connection secret. This is configured using the
+  # 'writeConnectionSecretsToNamespace' field.
+  writeConnectionSecretsToNamespace: crossplane-system
+  
+  # Each Composition must specify at least one composed resource template.
+  resources:
+    
+    # Providing a unique name for each entry is good practice.
+    # Only identifies the resources entry within the Composition. Required in future crossplane API versions.
+    - name: bucket
+      base:
+        # see https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.18.1
+        apiVersion: s3.aws.crossplane.io/v1beta1
+        kind: Bucket
+        metadata: {}
+        spec:
+          forProvider:
+            # public-read should enable public access for static website hosting
+            # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket
+            acl: "public-read"
+          # This must match with the metadata.name of our configure Provider in provider-aws.yaml
+          providerConfigRef:
+            name: provider-aws
+          deletionPolicy: Delete
+      
+      # Each resource can optionally specify a set of 'patches' that copy fields
+      # from (or to) the XR.
+      patches:
+        # All those fieldPath refer to XR or Claim spec.parameters
+        - fromFieldPath: "spec.bucketName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.region"
+          toFieldPath: "spec.forProvider.locationConstraint"
+  
+  # If you find yourself repeating patches a lot you can group them as a named
+  # 'patch set' then use a PatchSet type patch to reference them.
+  #patchSets:
+```
+
+
+### Create & build a Configuration using a crossplane.yaml
+
+Finally we want to test-drive our Composite Resource, if it is able to create a S3 Bucket for us! Therefore we need a `crossplane.yaml` file as described in https://crossplane.io/docs/v1.8/getting-started/create-configuration.html#build-and-push-the-configuration 
+
+See also https://crossplane.io/docs/v1.8/concepts/packages.html#configuration-packages
+
+Our [crossplane-s3/crossplane.yaml](crossplane-s3/crossplane.yaml) is of `kind: Configuration` and defines the minimum crossplane version needed alongside the crossplane AWS provider:
+
+```yaml
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Configuration
+metadata:
+  name: s3-bucket-composition
+spec:
+  crossplane:
+    version: ">=v1.8"
+  dependsOn:
+    - provider: crossplane/provider-aws
+      version: v0.22.0
+```
+
+Having this `crossplane.yaml` in place we can build our Configuration at last. On a command line go into the directory where the `crossplane.yaml` resides and run the `kubectl crossplane build` command:
+
+```shell
+$ cd crossplane-s3
+$ kubectl crossplane build configuration
+```
+
+
+
+
+
+
+
+
+
 # Provision an EKS cluster with crossplane
 
-__The crossplane core Controller and the Provider AWS Controller should now ready to provision any infrastructure component in AWS!__
+__The crossplane core Controller and the Provider AWS Controller should now be ready to provision any infrastructure component in AWS!__
 
 So in order to maximise the Inception let's provision an EKS based Kubernetes cluster in AWS with our crossplane Kubernetes cluster :) 
 
