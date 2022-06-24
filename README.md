@@ -431,19 +431,19 @@ spec:
     # for full CRD documentation and guide on how to write OpenAPI schemas
     schema:
       openAPIV3Schema:
-      type: object
-      properties:
-        spec:
-          type: object
-          # We define 2 needed parameters here one has to provide as XR or Claim spec.parameters
-          properties:
-            bucketName:
-              type: string
-            region:
-              type: string
-          required:
-            - bucketName
-            - region
+        type: object
+        properties:
+          spec:
+            type: object
+            # We define 2 needed parameters here one has to provide as XR or Claim spec.parameters
+            properties:
+              bucketName:
+                type: string
+              region:
+                type: string
+            required:
+              - bucketName
+              - region
 ```
 
 
@@ -546,6 +546,20 @@ $ cd crossplane-s3
 $ kubectl crossplane build configuration
 ```
 
+
+
+Really strange, getting
+
+```shell
+kubectl crossplane build configuration
+kubectl crossplane: error: failed to build package: failed to parse package: {path:/Users/jonashecht/dev/kubernetes/crossplane-kind-eks/crossplane-s3/composition.yaml position:0}: no kind "S3Bucket" is registered for version "crossplane.jonashackt.io/v1alpha1" in scheme "/home/runner/work/crossplane/crossplane/internal/xpkg/scheme.go:47"
+
+# and
+
+k apply -f claim.yaml
+error: resource mapping not found for name: "managed-s3" namespace: "" from "claim.yaml": no matches for kind "S3Bucket" in version "crossplane.jonashackt.io/v1alpha1"
+ensure CRDs are installed first
+```
 
 
 

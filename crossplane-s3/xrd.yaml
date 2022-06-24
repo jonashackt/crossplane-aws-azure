@@ -43,16 +43,16 @@ spec:
     # for full CRD documentation and guide on how to write OpenAPI schemas
     schema:
       openAPIV3Schema:
-      type: object
-      properties:
-        spec:
-          type: object
-          # We define 2 needed parameters here one has to provide as XR or Claim spec.parameters
-          properties:
-            bucketName:
-              type: string
-            region:
-              type: string
-          required:
-            - bucketName
-            - region
+        type: object
+        properties:
+          spec:
+            type: object
+            # We define 2 needed parameters here one has to provide as XR or Claim spec.parameters
+            properties:
+              bucketName:
+                type: string
+              region:
+                type: string
+            required:
+              - bucketName
+              - region
