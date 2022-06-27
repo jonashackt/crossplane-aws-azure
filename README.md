@@ -529,13 +529,58 @@ Testdrive with `kubectl apply -f claim.yaml`:
 
 ```shell
 $ kubectl apply -f claim.yaml
-error: resource mapping not found for name: "managed-s3" namespace: "" from "claim.yaml": no matches for kind "S3Bucket" in version "crossplane.jonashackt.io/v1alpha1"
-ensure CRDs are installed first
+error: error validating "claim.yaml": error validating data: [ValidationError(S3Bucket.metadata): unknown field "crossplane.io/external-name" in io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta_v2, ValidationError(S3Bucket.spec): unknown field "parameters" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec, ValidationError(S3Bucket.spec.writeConnectionSecretToRef): missing required field "namespace" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec.writeConnectionSecretToRef, ValidationError(S3Bucket.spec): missing required field "bucketName" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec, ValidationError(S3Bucket.spec): missing required field "region" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec]; if you choose to ignore these errors, turn validation off with --validate=false
 ```
 
+The crossplane validation is a great way to debug your yaml configuration - it hints you to the actual problems that are still present.
 
 
 
+
+### Waiting for resources to become ready
+
+There are some possible things to check while your resources (may) get deployed after running a `kubectl apply -f claim.yaml` (see https://crossplane.io/docs/v1.8/getting-started/provision-infrastructure.html#claim-your-infrastructure):
+
+* `kubectl get claim`: get all resources of all claim kinds, like PostgreSQLInstance.
+* `kubectl get composite`: get all resources that are of composite kind, like XPostgreSQLInstance.
+* `kubectl get managed`: get all resources that represent a unit of external infrastructure.
+* `kubectl get <name-of-provider>`: get all resources related to <provider>.
+* `kubectl get crossplane`: get all resources related to Crossplane.
+
+The best overview gives a `kubectl get crossplane` which will simply list all the crossplane resources:
+
+```shell
+$ kubectl get crossplane
+Warning: Please use v1beta1 version of this resource that has identical schema.
+NAME                                                                                          ESTABLISHED   OFFERED   AGE
+compositeresourcedefinition.apiextensions.crossplane.io/xs3buckets.crossplane.jonashackt.io   True          True      23m
+
+NAME                                               AGE
+composition.apiextensions.crossplane.io/s3bucket   2d17h
+
+NAME                                      INSTALLED   HEALTHY   PACKAGE                           AGE
+provider.pkg.crossplane.io/provider-aws   True        True      crossplane/provider-aws:v0.22.0   4d21h
+
+NAME                                                           HEALTHY   REVISION   IMAGE                             STATE    DEP-FOUND   DEP-INSTALLED   AGE
+providerrevision.pkg.crossplane.io/provider-aws-2189bc61e0bd   True      1          crossplane/provider-aws:v0.22.0   Active                               4d21h
+
+NAME                                        AGE     TYPE         DEFAULT-SCOPE
+storeconfig.secrets.crossplane.io/default   5d23h   Kubernetes   crossplane-system
+```
+
+We can also check our claim with `kubectl get <claim-kind> <claim-metadata.name>` like this:
+
+```shell
+$ kubectl get S3Bucket managed-s3
+NAME         READY   CONNECTION-SECRET               AGE
+managed-s3           managed-s3-connection-details   5s
+```
+
+To watch the provisioned resources become ready we can run `kubectl get crossplane -l crossplane.io/claim-name=<claim-metadata.name>`:
+
+```shell
+kubectl get crossplane -l crossplane.io/claim-name=managed-s3
+```
 
 
 
