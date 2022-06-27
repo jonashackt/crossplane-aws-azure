@@ -88,25 +88,17 @@ jobs:
           echo "### Create Claim, which should create S3 Bucket"
           kubectl apply -f crossplane-s3/claim.yaml
 
-      - name: Show Events of Claim, XR, MRs & wait until they become ready
-        run: |
-          echo "### Show Claim's Events"
-          kubectl describe claim managed-s3
-
-          echo "### Show XR's Events"
-          kubectl get composite -o yaml
-
-          echo "### Show crossplane overall status"
-          kubectl get crossplane
-
-          echo "### Show Managed Resource (MR) Events"
-          kubectl describe bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket     
-
           echo "### Wait until Managed Resource (MR) for S3 is up and running"
           kubectl wait --for=condition=ready --timeout=120s bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket
 
           echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=120s claim managed-s3     
+          kubectl wait --for=condition=ready --timeout=120s claim managed-s3  
+
+          echo "### Show Managed Resource (MR) Events"
+          kubectl describe bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket   
+
+          echo "### Show crossplane overall status"
+          kubectl get crossplane 
 
       - name: Upload index.html to S3 and check deployment works
         run: |
