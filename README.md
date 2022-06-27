@@ -609,10 +609,10 @@ Our bucket should be there! We can also double check in the AWS console:
 
 ![aws-console-s3-bucket-created](screenshots/aws-console-s3-bucket-created.png)
 
-Let's deploy our app (a simple [index.html](dist/index.html)) to our S3 Bucket using the aws CLI like this:
+Let's deploy our app (a simple [index.html](static/index.html)) to our S3 Bucket using the aws CLI like this:
 
 ```shell
-aws s3 sync dist s3://microservice-ui-nuxt-js-static-bucket --acl public-read
+aws s3 sync static s3://microservice-ui-nuxt-js-static-bucket --acl public-read
 ```
 
 Now we can open up http://microservice-ui-nuxt-js-static-bucket.s3-website.eu-central-1.amazonaws.com/ in our Browser and should see our app beeing deployed:
