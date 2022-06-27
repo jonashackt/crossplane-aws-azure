@@ -3,7 +3,7 @@ apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
   # XRDs must be named 'x<plural>.<group>'
-  name: xs3buckets.crossplane.jonashackt.io
+  name: xobjectstorages.crossplane.jonashackt.io
 spec:
   # This XRD defines an XR in the 'crossplane.jonashackt.io' API group.
   # The XR or Claim must use this group together with the spec.versions[0].name as it's apiVersion, like this:
@@ -12,17 +12,17 @@ spec:
   
   # XR names should always be prefixed with an 'X'
   names:
-    kind: XS3Bucket
-    plural: xs3buckets
+    kind: XObjectStorage
+    plural: xobjectstorages
   # This type of XR offers a claim, which should have the same name without the 'X' prefix
   claimNames:
-    kind: S3Bucket
-    plural: s3buckets
+    kind: ObjectStorage
+    plural: objectstorages
   
   # default Composition when none is specified (must match metadata.name of a provided Composition)
   # e.g. in composition.yaml
   defaultCompositionRef:
-    name: s3bucket
+    name: objectstorage-composition
 
   versions:
   - name: v1alpha1

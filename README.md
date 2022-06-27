@@ -353,7 +353,7 @@ apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
   # XRDs must be named 'x<plural>.<group>'
-  name: xs3buckets.crossplane.jonashackt.io
+  name: xobjectstorages.crossplane.jonashackt.io
 spec:
   # This XRD defines an XR in the 'crossplane.jonashackt.io' API group.
   # The XR or Claim must use this group together with the spec.versions[0].name as it's apiVersion, like this:
@@ -362,26 +362,17 @@ spec:
   
   # XR names should always be prefixed with an 'X'
   names:
-    kind: XS3Bucket
-    plural: xs3buckets
-  
+    kind: XObjectStorage
+    plural: xobjectstorages
   # This type of XR offers a claim, which should have the same name without the 'X' prefix
   claimNames:
-    kind: S3Bucket
-    plural: s3buckets
-  
-  # The keys the XR writes to it's connection secret
-  # which will act as a filter during aggregation of the connection secret from
-  # composed resources.
-  connectionSecretKeys:
-    - secretKey
-    - accessKey
-    - host
+    kind: ObjectStorage
+    plural: objectstorages
   
   # default Composition when none is specified (must match metadata.name of a provided Composition)
   # e.g. in composition.yaml
   defaultCompositionRef:
-    name: s3bucket
+    name: objectstorage-composition
 
   versions:
   - name: v1alpha1
@@ -421,12 +412,9 @@ We can double check the CRDs beeing created with `kubectl get crds` and filter t
 
 ```shell
 $ kubectl get crds | grep crossplane.jonashackt.io
-s3buckets.crossplane.jonashackt.io                              2022-06-27T06:45:52Z
-xs3buckets.crossplane.jonashackt.io                             2022-06-27T06:45:35Z
+objectstorages.crossplane.jonashackt.io                         2022-06-27T09:54:18Z
+xobjectstorages.crossplane.jonashackt.io                        2022-06-27T09:54:18Z
 ```
-
-
-
 
 
 ### Craft a Composition to manage our needed cloud resources
@@ -442,11 +430,11 @@ A Composite to manage an S3 Bucket in AWS with public access for static website 
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: s3bucket
+  name: objectstorage-composition
   labels:
     # An optional convention is to include a label of the XRD. This allows
     # easy discovery of compatible Compositions.
-    crossplane.io/xrd: xeksclusters.crossplane.jonashackt.io
+    crossplane.io/xrd: xobjectstorages.crossplane.jonashackt.io
     # The following label marks this Composition for AWS. This label can 
     # be used in 'compositionSelector' in an XR or Claim.
     provider: aws
@@ -456,7 +444,7 @@ spec:
   # version must be marked 'referenceable' in the XRD that defines the XR.
   compositeTypeRef:
     apiVersion: crossplane.jonashackt.io/v1alpha1
-    kind: XS3Bucket
+    kind: XObjectStorage
   
   # When an XR is created in response to a claim Crossplane needs to know where
   # it should create the XR's connection secret. This is configured using the
@@ -465,7 +453,6 @@ spec:
   
   # Each Composition must specify at least one composed resource template.
   resources:
-    
     # Providing a unique name for each entry is good practice.
     # Only identifies the resources entry within the Composition. Required in future crossplane API versions.
     - name: bucket
@@ -479,18 +466,15 @@ spec:
             # public-read should enable public access for static website hosting
             # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket
             acl: "public-read"
-          # This must match with the metadata.name of our configure Provider in provider-aws.yaml
-          providerConfigRef:
-            name: provider-aws
           deletionPolicy: Delete
       
       # Each resource can optionally specify a set of 'patches' that copy fields
       # from (or to) the XR.
       patches:
         # All those fieldPath refer to XR or Claim spec.parameters
-        - fromFieldPath: "spec.bucketName"
+        - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "metadata.name"
-        - fromFieldPath: "spec.region"
+        - fromFieldPath: "spec.parameters.region"
           toFieldPath: "spec.forProvider.locationConstraint"
   
   # If you find yourself repeating patches a lot you can group them as a named
@@ -514,28 +498,16 @@ Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](cr
 ---
 # Use the spec.group/spec.versions[0].name defined in the XRD
 apiVersion: crossplane.jonashackt.io/v1alpha1
-kind: S3Bucket
+kind: ObjectStorage
 metadata:
   # Only claims are namespaced, unlike XRs.
   namespace: default
   name: managed-s3
-  annotations:
-    # When a claim creates an XR its external name will automatically be propagated to the XR.
-    crossplane.io/external-name: dev-bucket-0
 spec:
-  # The compositionSelector allows you to match a Composition by labels rather
-  # than naming one explicitly. It is used to set the compositionRef if none is
-  # specified explicitly.
-  compositionSelector:
-    matchLabels:
-      environment: development
-      region: eu-central
-      provider: aws
-  
-  # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
-  # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
-  writeConnectionSecretToRef:
-    name: managed-s3-connection-details
+  # The compositionRef specifies which Composition this XR will use to compose
+  # resources when it is created, updated, or deleted.
+  compositionRef:
+    name: objectstorage-composition
   
   # Parameters for the Composition to provide the Managed Resources (MR) with
   # to create the actual infrastructure components
@@ -545,7 +517,9 @@ spec:
 ```
 
 
-Testdrive with `kubectl apply -f claim.yaml`:
+Testdrive with `kubectl apply -f claim.yaml`.
+
+When somthing goes wrong with the validation, this could look like this:
 
 ```shell
 $ kubectl apply -f claim.yaml
@@ -557,13 +531,7 @@ The crossplane validation is a great way to debug your yaml configuration - it h
 
 ### Waiting for resources to become ready
 
-There are some possible things to check while your resources (may) get deployed after running a `kubectl apply -f claim.yaml` (see https://crossplane.io/docs/v1.8/getting-started/provision-infrastructure.html#claim-your-infrastructure):
-
-* `kubectl get claim`: get all resources of all claim kinds, like PostgreSQLInstance.
-* `kubectl get composite`: get all resources that are of composite kind, like XPostgreSQLInstance.
-* `kubectl get managed`: get all resources that represent a unit of external infrastructure.
-* `kubectl get <name-of-provider>`: get all resources related to <provider>.
-* `kubectl get crossplane`: get all resources related to Crossplane.
+There are some possible things to check while your resources (may) get deployed after running a `kubectl apply -f claim.yaml` (see https://crossplane.io/docs/v1.8/getting-started/provision-infrastructure.html#claim-your-infrastructure).
 
 The best overview gives a `kubectl get crossplane` which will simply list all the crossplane resources:
 
@@ -586,10 +554,18 @@ NAME                                        AGE     TYPE         DEFAULT-SCOPE
 storeconfig.secrets.crossplane.io/default   5d23h   Kubernetes   crossplane-system
 ```
 
+* `kubectl get claim`: get all resources of all claim kinds, like PostgreSQLInstance.
+* `kubectl get composite`: get all resources that are of composite kind, like XPostgreSQLInstance.
+* `kubectl get managed`: get all resources that represent a unit of external infrastructure.
+* `kubectl get <name-of-provider>`: get all resources related to <provider>.
+* `kubectl get crossplane`: get all resources related to Crossplane.
+
+
+
 We can also check our claim with `kubectl get <claim-kind> <claim-metadata.name>` like this:
 
 ```shell
-$ kubectl get S3Bucket managed-s3
+$ kubectl get ObjectStorage managed-s3
 NAME         READY   CONNECTION-SECRET               AGE
 managed-s3           managed-s3-connection-details   5s
 ```
@@ -599,6 +575,20 @@ To watch the provisioned resources become ready we can run `kubectl get crosspla
 ```shell
 kubectl get crossplane -l crossplane.io/claim-name=managed-s3
 ```
+
+
+Check if the S3 Bucket has been created successfully via aws CLI with `aws s3 ls | grep microservice-ui-nuxt-js-static-bucket`.
+
+```shell
+$ aws s3 ls | grep microservice-ui-nuxt-js-static-bucket
+2022-06-27 11:56:26 microservice-ui-nuxt-js-static-bucket
+```
+
+Our bucket should be there! We can also double check in the AWS console:
+
+![aws-console-s3-bucket-created](screenshots/aws-console-s3-bucket-created.png)
+
+
 
 
 ### Troubleshooting your crossplane configuration
@@ -613,13 +603,10 @@ https://crossplane.io/docs/v1.8/reference/troubleshoot.html
 
 The docs also tell us what they mean by "follow the references":
 
-* Find your XR by running `kubectl describe <claim-kind> <claim-metadata.name>` and look for its “Resource Ref” (aka spec.resourceRef).
-    Run kubectl describe on your XR. This is where you’ll find out about issues with the Composition you’re using, if any.
-    If there are no issues but your XR doesn’t seem to be becoming ready, take a look for the “Resource Refs” (or spec.resourceRefs) to find your composed resources.
-    Run kubectl describe on each referenced composed resource to determine whether it is ready and what issues, if any, it is encountering.
-
-
-
+* Find your XR by running `kubectl describe <claim-kind> <claim-metadata.name>` and look for its “Resource Ref” (aka `spec.resourceRef`).
+* Run `kubectl describe` on your XR. This is where you’ll find out about issues with the Composition you’re using, if any.
+* If there are no issues but your XR doesn’t seem to be becoming ready, take a look for the “Resource Refs” (or `spec.resourceRefs`) to find your composed resources.
+* Run `kubectl describe` on each referenced composed resource to determine whether it is ready and what issues, if any, it is encountering.
 
 
 
@@ -679,74 +666,6 @@ So in order to maximise the Inception let's provision an EKS based Kubernetes cl
 
 A EKS cluster is a complex AWS construct leveraging different basic AWS services. That's exactly what a crossplane Composite Resource (XR) is all about. So let's create our own Composite Resource.
 
-
-## Defining all Composite Resource components to provide an AWS EKS cluster
-
-https://crossplane.io/docs/v1.8/concepts/composition.html#defining-composite-resources
-
-> A CompositeResourceDefinition (or XRD) defines the type and schema of your XR. It lets Crossplane know that you want a particular kind of XR to exist, and what fields that XR should have.
-
-Since defining your own CompositeResourceDefinitions and Compositions is the main work todo with crossplane, it's always good to know the full Reference documentation which can be found here https://crossplane.io/docs/v1.8/reference/composition.html
-
-One of the things to know is that crossplane automatically injects some common 'machinery' into the manifests of the XRDs and Compositions: https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
-
-
-### Craft a Composite Resource (XR) or Claim (XRC)
-
-Crossplane could look quite intimidating when having a first look. There are few guides around to show how to approach a setup when using crossplane the first time. For me I read lots of docs - and in the end found, that starting by crafting the Composite Resource (XR) or a corresponding Claim (XRC) might be a great option. Since we get ourselves into thinking what we actually want to provision. You can choose between writing an XR __OR__ XRC! You don't need both, since the XR will be generated from the XRC, if you choose to craft a XRC.
-
-https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
-
-Since we want to create a AWS EKS cluster, here's an suggestion for an [claim.yaml](eks-crossplane/claim.yaml):
-
-```yaml
----
-# Use the spec.group/spec.versions[0].name later defined in the XRD
-apiVersion: crossplane.jonashackt.io/v1alpha1
-kind: EKSCluster
-metadata:
-  # Only claims are namespaced, unlike XRs.
-  namespace: default
-  name: managed-eks
-spec:
-  # The compositionSelector allows you to match a Composition by labels rather
-  # than naming one explicitly. It is used to set the compositionRef if none is
-  # specified explicitly.
-  compositionSelector:
-    matchLabels:
-      environment: development
-      region: eu-central
-      provider: aws
-  # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
-  # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
-  writeConnectionSecretToRef:
-    name: managed-eks-connection-details
-  # Parameters for the Composition to provide the Managed Resources (MR) with
-  # to create the actual infrastructure components
-  parameters:
-    region: eu-central-1
-    k8s-version: "1.21"
-    workers-size: 2
-```
-
-
-
-### Defining a CompositeResourceDefinition (XRD) for our EKS cluster
-
-All possible fields an XRD can have are documented here:
-
-https://crossplane.io/docs/v1.8/reference/composition.html#compositeresourcedefinitions
-
-The field `spec.versions.schema` must contain a OpenAPI schema, which is similar to the ones used by any Kubernetes CRDs. They determine what fields the XR (and claim) will have. The full CRD documentation and a guide on how to write OpenAPI schemas could be found in the Kubernetes docs: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
-
-Note that crossplane will be automatically extended this section. Therefore the following fields are used by crossplane and will be ignored if they're found in the schema:
-
-    spec.resourceRef
-    spec.resourceRefs
-    spec.claimRef
-    spec.writeConnectionSecretToRef
-    status.conditions
-    status.connectionDetails
 
 
 

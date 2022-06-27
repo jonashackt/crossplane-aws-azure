@@ -2,11 +2,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: s3bucket
+  name: objectstorage-composition
   labels:
     # An optional convention is to include a label of the XRD. This allows
     # easy discovery of compatible Compositions.
-    crossplane.io/xrd: xs3buckets.crossplane.jonashackt.io
+    crossplane.io/xrd: xobjectstorages.crossplane.jonashackt.io
     # The following label marks this Composition for AWS. This label can 
     # be used in 'compositionSelector' in an XR or Claim.
     provider: aws
@@ -16,7 +16,7 @@ spec:
   # version must be marked 'referenceable' in the XRD that defines the XR.
   compositeTypeRef:
     apiVersion: crossplane.jonashackt.io/v1alpha1
-    kind: XS3Bucket
+    kind: XObjectStorage
   
   # When an XR is created in response to a claim Crossplane needs to know where
   # it should create the XR's connection secret. This is configured using the
