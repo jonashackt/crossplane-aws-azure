@@ -1,6 +1,6 @@
-# crossplane-kind-eks
-[![Build Status](https://github.com/jonashackt/crossplane-kind-eks/workflows/provision/badge.svg)](https://github.com/jonashackt/crossplane-kind-eks/actions)
-[![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-kind-eks/blob/master/LICENSE)
+# crossplane-kind-s3
+[![Build Status](https://github.com/jonashackt/crossplane-kind-s3/workflows/provision/badge.svg)](https://github.com/jonashackt/crossplane-kind-s3/actions)
+[![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-kind-s3/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
 Example project showing how to create EKS clusters using crossplane in kind finally run by GitHub Actions
