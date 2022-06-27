@@ -326,49 +326,6 @@ Since defining your own CompositeResourceDefinitions and Compositions is the mai
 One of the things to know is that crossplane automatically injects some common 'machinery' into the manifests of the XRDs and Compositions: https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
 
 
-### Craft a Composite Resource (XR) or Claim (XRC)
-
-Crossplane could look quite intimidating when having a first look. There are few guides around to show how to approach a setup when using crossplane the first time. For me I read lots of docs - and in the end found, that starting by crafting the Composite Resource (XR) or a corresponding Claim (XRC) might be a great option. Since we get ourselves into thinking what we actually want to provision. You can choose between writing an XR __OR__ XRC! You don't need both, since the XR will be generated from the XRC, if you choose to craft a XRC.
-
-https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
-
-Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-s3/claim.yaml):
-
-```yaml
----
-# Use the spec.group/spec.versions[0].name defined in the XRD
-apiVersion: crossplane.jonashackt.io/v1alpha1
-kind: S3Bucket
-metadata:
-  # Only claims are namespaced, unlike XRs.
-  namespace: default
-  name: managed-s3
-  annotations:
-    # When a claim creates an XR its external name will automatically be propagated to the XR.
-    crossplane.io/external-name: dev-bucket-0
-spec:
-  # The compositionSelector allows you to match a Composition by labels rather
-  # than naming one explicitly. It is used to set the compositionRef if none is
-  # specified explicitly.
-  compositionSelector:
-    matchLabels:
-      environment: development
-      region: eu-central
-      provider: aws
-  
-  # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
-  # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
-  writeConnectionSecretToRef:
-    name: managed-s3-connection-details
-  
-  # Parameters for the Composition to provide the Managed Resources (MR) with
-  # to create the actual infrastructure components
-  parameters:
-    bucketName: microservice-ui-nuxt-js-static-bucket
-    region: eu-central-1
-```
-
-
 
 ### Defining a CompositeResourceDefinition (XRD) for our S3 Bucket
 
@@ -454,6 +411,22 @@ spec:
                   - region
 ```
 
+Install the XRD into our cluster with:
+
+```shell
+kubectl apply -f xrd.yaml
+```
+
+We can double check the CRDs beeing created with `kubectl get crds` and filter them using `grep` to our group name `crossplane.jonashackt.io`:
+
+```shell
+$ kubectl get crds | grep crossplane.jonashackt.io
+s3buckets.crossplane.jonashackt.io                              2022-06-27T06:45:52Z
+xs3buckets.crossplane.jonashackt.io                             2022-06-27T06:45:35Z
+```
+
+
+
 
 
 ### Craft a Composition to manage our needed cloud resources
@@ -525,6 +498,53 @@ spec:
   #patchSets:
 ```
 
+Install our Composition with `kubectl apply -f composition.yaml`:
+
+
+
+### Craft a Composite Resource (XR) or Claim (XRC)
+
+Crossplane could look quite intimidating when having a first look. There are few guides around to show how to approach a setup when using crossplane the first time. You can choose between writing an XR __OR__ XRC! You don't need both, since the XR will be generated from the XRC, if you choose to craft a XRC.
+
+https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
+
+Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-s3/claim.yaml):
+
+```yaml
+---
+# Use the spec.group/spec.versions[0].name defined in the XRD
+apiVersion: crossplane.jonashackt.io/v1alpha1
+kind: S3Bucket
+metadata:
+  # Only claims are namespaced, unlike XRs.
+  namespace: default
+  name: managed-s3
+  annotations:
+    # When a claim creates an XR its external name will automatically be propagated to the XR.
+    crossplane.io/external-name: dev-bucket-0
+spec:
+  # The compositionSelector allows you to match a Composition by labels rather
+  # than naming one explicitly. It is used to set the compositionRef if none is
+  # specified explicitly.
+  compositionSelector:
+    matchLabels:
+      environment: development
+      region: eu-central
+      provider: aws
+  
+  # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
+  # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
+  writeConnectionSecretToRef:
+    name: managed-s3-connection-details
+  
+  # Parameters for the Composition to provide the Managed Resources (MR) with
+  # to create the actual infrastructure components
+  parameters:
+    bucketName: microservice-ui-nuxt-js-static-bucket
+    region: eu-central-1
+```
+
+
 Testdrive with `kubectl apply -f claim.yaml`:
 
 ```shell
@@ -533,8 +553,6 @@ error: error validating "claim.yaml": error validating data: [ValidationError(S3
 ```
 
 The crossplane validation is a great way to debug your yaml configuration - it hints you to the actual problems that are still present.
-
-
 
 
 ### Waiting for resources to become ready
@@ -583,6 +601,31 @@ kubectl get crossplane -l crossplane.io/claim-name=managed-s3
 ```
 
 
+### Troubleshooting your crossplane configuration
+
+https://crossplane.io/docs/v1.8/reference/composition.html#tips-tricks-and-troubleshooting
+
+https://crossplane.io/docs/v1.8/reference/troubleshoot.html
+
+
+> Per Kubernetes convention, Crossplane keeps errors close to the place they happen. This means that if your claim is not becoming ready due to an issue with your Composition or with a composed resource you’ll need to “follow the references” to find out why. Your claim will only tell you that the XR is not yet ready.
+
+
+The docs also tell us what they mean by "follow the references":
+
+* Find your XR by running `kubectl describe <claim-kind> <claim-metadata.name>` and look for its “Resource Ref” (aka spec.resourceRef).
+    Run kubectl describe on your XR. This is where you’ll find out about issues with the Composition you’re using, if any.
+    If there are no issues but your XR doesn’t seem to be becoming ready, take a look for the “Resource Refs” (or spec.resourceRefs) to find your composed resources.
+    Run kubectl describe on each referenced composed resource to determine whether it is ready and what issues, if any, it is encountering.
+
+
+
+
+
+
+
+
+
 
 ### Create & build a Configuration using a crossplane.yaml
 
@@ -619,12 +662,6 @@ Really strange, getting
 ```shell
 kubectl crossplane build configuration
 kubectl crossplane: error: failed to build package: failed to parse package: {path:/Users/jonashecht/dev/kubernetes/crossplane-kind-eks/crossplane-s3/composition.yaml position:0}: no kind "S3Bucket" is registered for version "crossplane.jonashackt.io/v1alpha1" in scheme "/home/runner/work/crossplane/crossplane/internal/xpkg/scheme.go:47"
-
-# and
-
-k apply -f claim.yaml
-error: resource mapping not found for name: "managed-s3" namespace: "" from "claim.yaml": no matches for kind "S3Bucket" in version "crossplane.jonashackt.io/v1alpha1"
-ensure CRDs are installed first
 ```
 
 
@@ -779,7 +816,7 @@ Promoted from sandbox to incubation by the CNCF: https://blog.crossplane.io/cros
 
 Crossplane vs. Terraform: https://blog.crossplane.io/crossplane-vs-terraform/
 
-
+Crossplane 101 https://vrelevant.net/crossplane-bringing-the-basics-together/
 
 
 
@@ -788,6 +825,8 @@ https://www.techtarget.com/searchitoperations/news/252508176/Crossplane-project-
 
 Argo + crossplane https://morningspace.medium.com/using-crossplane-in-gitops-what-to-check-in-git-76c08a5ff0c4
 
+
+Infrastructure-as-Apps https://codefresh.io/blog/infrastructure-as-apps-the-gitops-future-of-infra-as-code/
 
 
 VMWare support https://blog.crossplane.io/adding-vmware-support-to-crossplane-using-terraform/
@@ -814,6 +853,11 @@ And it's quite a doublicate effort IMHO compared to other tools like Pulumi that
 
 https://github.com/aws-samples/crossplane-aws-blueprints
 
+
+Thoughworks Tech Radar: Assess https://www.thoughtworks.com/de-de/radar/tools/crossplane
+
+
+IONOS and crossplane https://docs.ionos.com/crossplane-provider/example
 
 
 ### Stacks now called Packages

@@ -25,7 +25,6 @@ spec:
   
   # Each Composition must specify at least one composed resource template.
   resources:
-    
     # Providing a unique name for each entry is good practice.
     # Only identifies the resources entry within the Composition. Required in future crossplane API versions.
     - name: bucket
@@ -39,18 +38,15 @@ spec:
             # public-read should enable public access for static website hosting
             # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket
             acl: "public-read"
-          # This must match with the metadata.name of our configure Provider in provider-aws.yaml
-          providerConfigRef:
-            name: provider-aws
           deletionPolicy: Delete
       
       # Each resource can optionally specify a set of 'patches' that copy fields
       # from (or to) the XR.
       patches:
         # All those fieldPath refer to XR or Claim spec.parameters
-        - fromFieldPath: "spec.bucketName"
+        - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "metadata.name"
-        - fromFieldPath: "spec.region"
+        - fromFieldPath: "spec.parameters.region"
           toFieldPath: "spec.forProvider.locationConstraint"
   
   # If you find yourself repeating patches a lot you can group them as a named

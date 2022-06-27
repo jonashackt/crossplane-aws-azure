@@ -14,19 +14,10 @@ spec:
   names:
     kind: XS3Bucket
     plural: xs3buckets
-  
   # This type of XR offers a claim, which should have the same name without the 'X' prefix
   claimNames:
     kind: S3Bucket
     plural: s3buckets
-  
-  # The keys the XR writes to it's connection secret
-  # which will act as a filter during aggregation of the connection secret from
-  # composed resources.
-  connectionSecretKeys:
-    - secretKey
-    - accessKey
-    - host
   
   # default Composition when none is specified (must match metadata.name of a provided Composition)
   # e.g. in composition.yaml

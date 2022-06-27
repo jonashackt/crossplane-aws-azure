@@ -1,28 +1,25 @@
 ---
 # Use the spec.group/spec.versions[0].name defined in the XRD
 apiVersion: crossplane.jonashackt.io/v1alpha1
-kind: S3Bucket
+kind: XS3Bucket
 metadata:
   # Only claims are namespaced, unlike XRs.
-  namespace: default
+  #namespace: default
   name: managed-s3
-  annotations:
-    # When a claim creates an XR its external name will automatically be propagated to the XR.
-    crossplane.io/external-name: dev-bucket-0
 spec:
+  # The compositionRef specifies which Composition this XR will use to compose
+  # resources when it is created, updated, or deleted. This can be omitted and
+  # will be set automatically if the XRD has a default or enforced composition
+  # reference, or if the below composition selector is set.
+  compositionRef:
+    name: s3bucket
+
   # The compositionSelector allows you to match a Composition by labels rather
   # than naming one explicitly. It is used to set the compositionRef if none is
   # specified explicitly.
   compositionSelector:
     matchLabels:
-      environment: development
-      region: eu-central
       provider: aws
-  
-  # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
-  # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
-  writeConnectionSecretToRef:
-    name: managed-s3-connection-details
   
   # Parameters for the Composition to provide the Managed Resources (MR) with
   # to create the actual infrastructure components
