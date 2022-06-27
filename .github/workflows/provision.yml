@@ -74,11 +74,14 @@ jobs:
       
       - name: Create XRD, Composite & Claim to kind cluster
         run: |
-          echo "### Create CompositeResourceDefinition"
+          echo "### Create CompositeResourceDefinition (XRD)"
           kubectl apply -f crossplane-s3/xrd.yaml
           kubectl get xrd
+          
+          echo "### Wait for XRD to become ready"
+          kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 
-          echo "### Create Composite"
+          echo "### Create Composition"
           kubectl apply -f crossplane-s3/composition.yaml
           kubectl get composition
 
