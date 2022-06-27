@@ -38,6 +38,9 @@ spec:
             # public-read should enable public access for static website hosting
             # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket
             acl: "public-read"
+            websiteConfiguration:
+              indexDocument: 
+                suffix: "index.html"
           deletionPolicy: Delete
       
       # Each resource can optionally specify a set of 'patches' that copy fields

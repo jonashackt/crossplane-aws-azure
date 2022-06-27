@@ -3,7 +3,7 @@
 [![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-kind-s3/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
-Example project showing how to create EKS clusters using crossplane in kind finally run by GitHub Actions
+Example project showing how to get started with Crossplane to e.g. provision a S3Bucket through K8s CRDs
 
 
 Crossplane https://crossplane.io/ claims to be the "The cloud native control plane framework". It introduces a new way how to manage any cloud resource (beeing it Kubernetes-native or not). It's an alternative Infrastructure-as-Code tooling to Terraform, AWS CDK/Bicep or Pulumi and introduces a higher level of abstraction - based on Kubernetes CRDs. 
@@ -529,6 +529,27 @@ error: error validating "claim.yaml": error validating data: [ValidationError(S3
 The crossplane validation is a great way to debug your yaml configuration - it hints you to the actual problems that are still present.
 
 
+### Troubleshooting your crossplane configuration
+
+https://crossplane.io/docs/v1.8/reference/composition.html#tips-tricks-and-troubleshooting
+
+https://crossplane.io/docs/v1.8/reference/troubleshoot.html
+
+
+> Per Kubernetes convention, Crossplane keeps errors close to the place they happen. This means that if your claim is not becoming ready due to an issue with your Composition or with a composed resource you’ll need to “follow the references” to find out why. Your claim will only tell you that the XR is not yet ready.
+
+
+The docs also tell us what they mean by "follow the references":
+
+* Find your XR by running `kubectl describe <claim-kind> <claim-metadata.name>` and look for its “Resource Ref” (aka `spec.resourceRef`).
+* Run `kubectl describe` on your XR. This is where you’ll find out about issues with the Composition you’re using, if any.
+* If there are no issues but your XR doesn’t seem to be becoming ready, take a look for the “Resource Refs” (or `spec.resourceRefs`) to find your composed resources.
+* Run `kubectl describe` on each referenced composed resource to determine whether it is ready and what issues, if any, it is encountering.
+
+
+
+
+
 ### Waiting for resources to become ready
 
 There are some possible things to check while your resources (may) get deployed after running a `kubectl apply -f claim.yaml` (see https://crossplane.io/docs/v1.8/getting-started/provision-infrastructure.html#claim-your-infrastructure).
@@ -588,29 +609,38 @@ Our bucket should be there! We can also double check in the AWS console:
 
 ![aws-console-s3-bucket-created](screenshots/aws-console-s3-bucket-created.png)
 
+Let's deploy our app (a simple [index.html](dist/index.html)) to our S3 Bucket using the aws CLI like this:
 
+```shell
+aws s3 sync dist s3://microservice-ui-nuxt-js-static-bucket --acl public-read
+```
 
+Now we can open up http://microservice-ui-nuxt-js-static-bucket.s3-website.eu-central-1.amazonaws.com/ in our Browser and should see our app beeing deployed:
 
-### Troubleshooting your crossplane configuration
-
-https://crossplane.io/docs/v1.8/reference/composition.html#tips-tricks-and-troubleshooting
-
-https://crossplane.io/docs/v1.8/reference/troubleshoot.html
-
-
-> Per Kubernetes convention, Crossplane keeps errors close to the place they happen. This means that if your claim is not becoming ready due to an issue with your Composition or with a composed resource you’ll need to “follow the references” to find out why. Your claim will only tell you that the XR is not yet ready.
-
-
-The docs also tell us what they mean by "follow the references":
-
-* Find your XR by running `kubectl describe <claim-kind> <claim-metadata.name>` and look for its “Resource Ref” (aka `spec.resourceRef`).
-* Run `kubectl describe` on your XR. This is where you’ll find out about issues with the Composition you’re using, if any.
-* If there are no issues but your XR doesn’t seem to be becoming ready, take a look for the “Resource Refs” (or `spec.resourceRefs`) to find your composed resources.
-* Run `kubectl describe` on each referenced composed resource to determine whether it is ready and what issues, if any, it is encountering.
+![s3-static-webseite-deployed](screenshots/s3-static-webseite-deployed.png)
 
 
 
 
+Before removing the claim, we should remove our `index.html` - otherwise we'll run into errors like this:
+
+```shell
+  Warning  CannotDeleteExternalResource  37s (x16 over 57s)  managed/bucket.s3.aws.crossplane.io  (combined from similar events): operation error S3: DeleteBucket, https response error StatusCode: 409, RequestID: 0WHR906YZRF0YDSH, HostID: x7cz2iYF/8Ag2wKtKRZUy1j3hPk67tBUOTFeR//+grrD7plqQ5Zo6EecO70KOOgHKbY7hUyp9vU=, api error BucketNotEmpty: The bucket you tried to delete is not empty
+```
+
+So first delete the `index.html`:
+
+```shell
+aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
+```
+
+Finally remove our S3 Bucket again with 
+
+```shell
+kubectl delete claim managed-s3
+```
+
+Now also the S3 Bucket should be removed by crossplane.
 
 
 

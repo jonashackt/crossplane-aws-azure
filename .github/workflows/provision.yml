@@ -68,3 +68,44 @@ jobs:
 
           echo "### Create ProviderConfig to consume the Secret containing AWS credentials"
           kubectl apply -f provider-config-aws.yaml
+
+          echo "### Get overall provider status"
+          kubectl get provider
+      
+      - name: Create XRD, Composite & Claim to kind cluster
+        run: |
+          echo "### Create CompositeResourceDefinition"
+          kubectl apply -f crossplane-s3/xrd.yaml
+          kubectl get xrd
+
+          echo "### Create Composite"
+          kubectl apply -f crossplane-s3/composite.yaml
+          kubectl get composite
+
+          echo "### Create Claim, which should create S3 Bucket"
+          kubectl apply -f crossplane-s3/claim.yaml
+
+          echo "### Have a look into the Claim's Events"
+          kubectl describe claim managed-s3
+
+          echo "### Check crossplane Managed Resources (MR)"
+          kubectl get managed
+
+          echo "### Check crossplane overall status"
+          kubectl get crossplane
+
+      - name: Upload index.html to S3 and check deployment works
+        run: |
+          echo: "### Upload index.html to Bucket via AWS CLI"
+          aws s3 sync dist s3://microservice-ui-nuxt-js-static-bucket --acl public-read
+
+          echo: "### Access S3 Bucket static webseite"
+          curl http://microservice-ui-nuxt-js-static-bucket.s3-website.eu-central-1.amazonaws.com
+
+      - name: Delete index.html and remove Claim for S3 Bucket deletion
+        run: |
+          echo: "### Delete index.html from S3 Bucket"
+          aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
+
+          echo: "### Remove CompositeResourceClaim to delete S3 Bucket"
+          kubectl delete claim managed-s3
