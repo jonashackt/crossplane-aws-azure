@@ -88,7 +88,8 @@ jobs:
           echo "### Have a look into the Claim's Events"
           kubectl describe claim managed-s3
 
-          echo "### Check crossplane Managed Resources (MR)"
+          echo "### Wait until AWS Provider is up and running & check crossplane Managed Resources (MR)"
+          kubectl wait --for=condition=ready --timeout=120s bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket
           kubectl get managed
 
           echo "### Check crossplane overall status"
