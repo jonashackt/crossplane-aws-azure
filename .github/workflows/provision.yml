@@ -88,45 +88,38 @@ jobs:
           echo "### Create Claim, which should create S3 Bucket"
           kubectl apply -f crossplane-s3/claim.yaml
 
-      - name: Sleep for 10 seconds
-        uses: jakejarvis/wait-action@master
-        with:
-          time: '10s'
-
-      - name: Create XRD, Composite & Claim to kind cluster
+      - name: Show Events of Claim, XR & MRs 
         run: |
-          kubectl get claim
-          kubectl get composite
+          echo "### Show Claim's Events"
           kubectl describe claim managed-s3
 
+          echo "### Show XR's Events"
           kubectl get composite -o yaml
 
+          echo "### Show crossplane overall status"
           kubectl get crossplane
 
-          kubectl describe bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket
-
-          echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=120s claim managed-s3          
+          echo "### Show Managed Resource (MR) Events"
+          kubectl describe bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket     
 
           echo "### Wait until Managed Resource (MR) for S3 is up and running"
           kubectl wait --for=condition=ready --timeout=120s bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket
-          kubectl get managed
 
-          echo "### Check crossplane overall status"
-          kubectl get crossplane
+          echo "### Wait until Claim & XR (Composite) are ready"
+          kubectl wait --for=condition=ready --timeout=120s claim managed-s3     
 
       - name: Upload index.html to S3 and check deployment works
         run: |
-          echo: "### Upload index.html to Bucket via AWS CLI"
+          echo "### Upload index.html to Bucket via AWS CLI"
           aws s3 sync dist s3://microservice-ui-nuxt-js-static-bucket --acl public-read
 
-          echo: "### Access S3 Bucket static webseite"
+          echo "### Access S3 Bucket static webseite"
           curl http://microservice-ui-nuxt-js-static-bucket.s3-website.eu-central-1.amazonaws.com
 
       - name: Delete index.html and remove Claim for S3 Bucket deletion
         run: |
-          echo: "### Delete index.html from S3 Bucket"
+          echo "### Delete index.html from S3 Bucket"
           aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
 
-          echo: "### Remove CompositeResourceClaim to delete S3 Bucket"
+          echo "### Remove CompositeResourceClaim to delete S3 Bucket"
           kubectl delete claim managed-s3
