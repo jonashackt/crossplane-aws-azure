@@ -90,9 +90,6 @@ jobs:
           echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s claim managed-s3  
 
-          echo "### Show Managed Resource (MR) Events"
-          kubectl describe bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket   
-
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
