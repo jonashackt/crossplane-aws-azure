@@ -83,13 +83,9 @@ jobs:
 
           echo "### Create Composition"
           kubectl apply -f crossplane-s3/composition.yaml
-          kubectl get composition
 
           echo "### Create Claim, which should create S3 Bucket"
           kubectl apply -f crossplane-s3/claim.yaml
-
-          echo "### Wait until Managed Resource (MR) for S3 is up and running"
-          kubectl wait --for=condition=ready --timeout=120s bucket.s3.aws.crossplane.io/microservice-ui-nuxt-js-static-bucket
 
           echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s claim managed-s3  
