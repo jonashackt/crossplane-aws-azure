@@ -78,7 +78,7 @@ jobs:
           kubectl apply -f crossplane-s3/xrd.yaml
           kubectl get xrd
           
-          echo "### Wait for XRD to become ready"
+          echo "### Wait for XRD to become Offered"
           kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 
           echo "### Create Composition"
@@ -87,6 +87,14 @@ jobs:
 
           echo "### Create Claim, which should create S3 Bucket"
           kubectl apply -f crossplane-s3/claim.yaml
+
+      - name: Sleep for 30 seconds
+        uses: jakejarvis/wait-action@master
+        with:
+          time: '30s'
+
+      - name: Create XRD, Composite & Claim to kind cluster
+        run: |
           kubectl get claim
           kubectl get composite
           kubectl describe claim managed-s3
