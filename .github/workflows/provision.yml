@@ -79,8 +79,8 @@ jobs:
           kubectl get xrd
 
           echo "### Create Composite"
-          kubectl apply -f crossplane-s3/composite.yaml
-          kubectl get composite
+          kubectl apply -f crossplane-s3/composition.yaml
+          kubectl get composition
 
           echo "### Create Claim, which should create S3 Bucket"
           kubectl apply -f crossplane-s3/claim.yaml
