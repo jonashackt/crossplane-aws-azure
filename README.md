@@ -343,6 +343,9 @@ metadata:
   # Only claims are namespaced, unlike XRs.
   namespace: default
   name: managed-s3
+  annotations:
+    # When a claim creates an XR its external name will automatically be propagated to the XR.
+    crossplane.io/external-name: dev-bucket-0
 spec:
   # The compositionSelector allows you to match a Composition by labels rather
   # than naming one explicitly. It is used to set the compositionRef if none is
@@ -352,10 +355,12 @@ spec:
       environment: development
       region: eu-central
       provider: aws
+  
   # The writeConnectionSecretToRef field specifies a Kubernetes Secret that this
   # XR(C) should write its connection details (if any) to (XR need to specify a namespace here)
   writeConnectionSecretToRef:
     name: managed-s3-connection-details
+  
   # Parameters for the Composition to provide the Managed Resources (MR) with
   # to create the actual infrastructure components
   parameters:
@@ -437,13 +442,16 @@ spec:
             type: object
             # We define 2 needed parameters here one has to provide as XR or Claim spec.parameters
             properties:
-              bucketName:
-                type: string
-              region:
-                type: string
-            required:
-              - bucketName
-              - region
+              parameters:
+                type: object
+                properties:
+                  bucketName:
+                    type: string
+                  region:
+                    type: string
+                required:
+                  - bucketName
+                  - region
 ```
 
 
@@ -516,6 +524,19 @@ spec:
   # 'patch set' then use a PatchSet type patch to reference them.
   #patchSets:
 ```
+
+Testdrive with `kubectl apply -f claim.yaml`:
+
+```shell
+$ kubectl apply -f claim.yaml
+error: resource mapping not found for name: "managed-s3" namespace: "" from "claim.yaml": no matches for kind "S3Bucket" in version "crossplane.jonashackt.io/v1alpha1"
+ensure CRDs are installed first
+```
+
+
+
+
+
 
 
 ### Create & build a Configuration using a crossplane.yaml

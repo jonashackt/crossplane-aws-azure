@@ -7,8 +7,8 @@ metadata:
   namespace: default
   name: managed-s3
   annotations:
-  # When a claim creates an XR its external name will automatically be propagated to the XR.
-  crossplane.io/external-name: dev-bucket-0
+    # When a claim creates an XR its external name will automatically be propagated to the XR.
+    crossplane.io/external-name: dev-bucket-0
 spec:
   # The compositionSelector allows you to match a Composition by labels rather
   # than naming one explicitly. It is used to set the compositionRef if none is
