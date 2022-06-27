@@ -53,8 +53,8 @@ jobs:
         run: |
           echo "### Create aws-creds.conf file"
           echo "[default]
-          aws_access_key_id = $(aws configure get aws_access_key_id)
-          aws_secret_access_key = $(aws configure get aws_secret_access_key)
+          aws_access_key_id = $AWS_ACCESS_KEY_ID
+          aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
           " > aws-creds.conf
           
           echo "### Create AWS Provider secret"
@@ -88,10 +88,10 @@ jobs:
           echo "### Create Claim, which should create S3 Bucket"
           kubectl apply -f crossplane-s3/claim.yaml
 
-      - name: Sleep for 30 seconds
+      - name: Sleep for 10 seconds
         uses: jakejarvis/wait-action@master
         with:
-          time: '30s'
+          time: '10s'
 
       - name: Create XRD, Composite & Claim to kind cluster
         run: |
