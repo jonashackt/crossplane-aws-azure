@@ -101,6 +101,8 @@ jobs:
 
           kubectl get composite -o yaml
 
+          kubectl get crossplane
+
           echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s claim managed-s3          
 
