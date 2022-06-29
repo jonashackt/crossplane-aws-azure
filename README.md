@@ -255,8 +255,8 @@ kind: Provider
 metadata:
   name: provider-aws
 spec:
-  package: crossplane/provider-aws:latest
-  packagePullPolicy: IfNotPresent
+  package: crossplane/provider-aws:v0.28.1
+  packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
 ```
@@ -267,9 +267,7 @@ Install the AWS provider using `kubectl`:
 kubectl apply -f crossplane-config/provider-aws.yaml
 ```
 
-The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. I choose to use the `latest` version of the AWS provider here, since I was thrown into errors because of the configuration of old provider versions. This is for sure not recommended for a production setup, but should work for this example project well. I'am not sure, if the crossplane team will provide an installation method where we can use tools like Renovate to keep our crossplane providers up to date. 
-
-A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
+The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. I'am not sure, if the crossplane team will provide an installation method where we can use tools like Renovate to keep our crossplane providers up to date. A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
 
 ```shell
 $ kubectl get crossplane
