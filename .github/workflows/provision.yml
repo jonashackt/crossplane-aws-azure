@@ -62,6 +62,8 @@ jobs:
           echo "### Install the crossplane AWS Provider"
           kubectl apply -f crossplane-config/provider-aws.yaml
 
+          kubectl get provider
+
           echo "### Wait until AWS Provider is up and running"
           kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
 
