@@ -60,7 +60,7 @@ jobs:
           kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
 
           echo "### Install the crossplane AWS Provider"
-          kubectl apply -f provider-aws.yaml
+          kubectl apply -f crossplane-config/provider-aws.yaml
 
           echo "### Wait until AWS Provider is up and running"
           kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
