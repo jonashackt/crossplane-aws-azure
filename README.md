@@ -255,13 +255,13 @@ kind: Provider
 metadata:
   name: provider-aws
 spec:
-  package: crossplane/provider-aws:v0.22.0
+  package: crossplane/provider-aws:latest
   packagePullPolicy: IfNotPresent
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
 ```
 
-The `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy
+The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy I choose to use the `latest` version of the AWS provider here, since I was thrown into errors because of the configuration of old provider versions. This is for sure not recommended for a production setup, but should work for this example project well. I'am not sure, if the crossplane team will provide an installation method where we can use tools like Renovate to keep our crossplane providers up to date. 
 
 Now install the AWS provider using `kubectl`:
 
