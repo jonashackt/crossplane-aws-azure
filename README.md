@@ -142,6 +142,7 @@ helm dependency update crossplane-config/install
 helm upgrade --install crossplane --namespace crossplane-system crossplane-config/install
 ```
 
+Be sure to exclude `charts` and `Chart.lock` files via [.gitignore](.gitignore).
 
 Check crossplane version installed with `helm list -n crossplane-system` :
 
