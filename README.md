@@ -261,15 +261,26 @@ spec:
   revisionHistoryLimit: 1
 ```
 
-The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy I choose to use the `latest` version of the AWS provider here, since I was thrown into errors because of the configuration of old provider versions. This is for sure not recommended for a production setup, but should work for this example project well. I'am not sure, if the crossplane team will provide an installation method where we can use tools like Renovate to keep our crossplane providers up to date. 
-
-Now install the AWS provider using `kubectl`:
+Install the AWS provider using `kubectl`:
 
 ```
 kubectl apply -f crossplane-config/provider-aws.yaml
 ```
 
-With this our first crossplane Provider has been installed. You may check it with `kubectl get provider`:
+The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. I choose to use the `latest` version of the AWS provider here, since I was thrown into errors because of the configuration of old provider versions. This is for sure not recommended for a production setup, but should work for this example project well. I'am not sure, if the crossplane team will provide an installation method where we can use tools like Renovate to keep our crossplane providers up to date. 
+
+A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
+
+```shell
+$ kubectl get crossplane
+...
+NAME                                                           HEALTHY   REVISION   IMAGE                             STATE      DEP-FOUND   DEP-INSTALLED   AGE
+providerrevision.pkg.crossplane.io/provider-aws-2189bc61e0bd   True      1          crossplane/provider-aws:v0.22.0   Inactive                               6d22h
+providerrevision.pkg.crossplane.io/provider-aws-d87796863f95   True      2          crossplane/provider-aws:v0.28.1   Active                                 43h
+...
+```
+
+Now our first crossplane Provider has been installed. You may check it with `kubectl get provider`:
 
 ```shell
 $ kubectl get provider
