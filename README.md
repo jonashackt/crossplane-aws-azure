@@ -108,6 +108,8 @@ kind create cluster --image kindest/node:v1.23.0 --wait 5m
 
 ## Install Crossplane with Helm
 
+The crossplane docs tell us to use Helm for installation:
+
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#install-crossplane
 
 ```shell
@@ -118,6 +120,28 @@ helm repo update
 
 helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane
 ```
+
+As an Renovate-powered alternative we can [create our own simple [Chart.yaml](crossplane-config/install/Chart.yaml) to enable automatic updates](https://stackoverflow.com/a/71765472/4964553) of our installation if new crossplane versions get released:
+
+```yaml
+apiVersion: v2
+type: application
+name: crossplane
+version: 0.0.0 # unused
+appVersion: 0.0.0 # unused
+dependencies:
+  - name: crossplane
+    repository: https://charts.crossplane.io/stable
+    version: 1.8.0
+```
+
+To install crossplane using our own `Chart.yaml` simply run:
+
+```shell
+helm dependency update crossplane-config/install
+helm upgrade --install crossplane --namespace crossplane-system crossplane-config/install
+```
+
 
 Check crossplane version installed with `helm list -n crossplane-system` :
 
@@ -220,7 +244,7 @@ We can install crossplane Packages (which can be Providers or Configurations) vi
 kubectl crossplane install provider crossplane/provider-aws:v0.22.0
 ```
 
-Or we can create our own [provider-aws.yaml](provider-aws.yaml) file like this:
+Or we can create our own [provider-aws.yaml](crossplane-config/provider-aws.yaml) file like this:
 
 > This `kind: Provider` with `apiVersion: pkg.crossplane.io/v1` is completely different from the `kind: Provider` which we want to consume! These use `apiVersion: meta.pkg.crossplane.io/v1`.
 
@@ -241,7 +265,7 @@ The `packagePullPolicy` configuration here is crucial, since we can configure an
 Now install the AWS provider using `kubectl`:
 
 ```
-kubectl apply -f provider-aws.yaml
+kubectl apply -f crossplane-config/provider-aws.yaml
 ```
 
 With this our first crossplane Provider has been installed. You may check it with `kubectl get provider`:
@@ -267,7 +291,7 @@ https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure
 
 https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html#optional-setup-aws-provider-manually
 
-Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-aws.yaml](provider-config-aws.yaml):
+Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-aws.yaml](crossplane-config/provider-config-aws.yaml):
 
 ```yaml
 apiVersion: aws.crossplane.io/v1beta1
@@ -290,7 +314,7 @@ The `secretRef.name` and `secretRef.key` has to match the fields of the already 
 Apply it with:
 
 ```shell
-kubectl apply -f provider-config-aws.yaml
+kubectl apply -f crossplane-config/provider-config-aws.yaml
 ```
 
 

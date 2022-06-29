@@ -36,9 +36,8 @@ jobs:
           kubectl create namespace crossplane-system
 
           echo "### Install crossplane via Helm"
-          helm repo add crossplane-stable https://charts.crossplane.io/stable
-          helm repo update
-          helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane
+          helm dependency update crossplane-config/install
+          helm upgrade --install crossplane --namespace crossplane-system crossplane-config/install
 
       - name: Check crossplane status
         run: |
@@ -67,7 +66,7 @@ jobs:
           kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
 
           echo "### Create ProviderConfig to consume the Secret containing AWS credentials"
-          kubectl apply -f provider-config-aws.yaml
+          kubectl apply -f crossplane-config/provider-config-aws.yaml
 
           echo "### Get overall provider status"
           kubectl get provider
