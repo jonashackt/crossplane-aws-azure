@@ -1,6 +1,10 @@
 # Exclude credential configuration files like aws-creds.conf
 *-creds.conf
 
+# Exclude Helm charts lock and packages
+**/**/charts
+**/**/Chart.lock
+
 # Logs
 logs
 *.log
