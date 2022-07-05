@@ -112,7 +112,7 @@ jobs:
           echo "### Get overall provider status"
           kubectl get provider
 
-      - name: Create XRD, Composite & Claim to kind cluster
+      - name: AWS -> Create XRD, Composite & Claim to create S3 Bucket
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
           kubectl apply -f crossplane-s3/xrd.yaml
@@ -133,7 +133,7 @@ jobs:
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
-      - name: Upload index.html to S3 and check deployment works
+      - name: AWS -> Upload index.html to S3 and check deployment works
         run: |
           echo "### Upload index.html to Bucket via AWS CLI"
           aws s3 sync static s3://microservice-ui-nuxt-js-static-bucket --acl public-read
@@ -141,10 +141,31 @@ jobs:
           echo "### Access S3 Bucket static webseite"
           curl http://microservice-ui-nuxt-js-static-bucket.s3-website.eu-central-1.amazonaws.com
 
-      - name: Delete index.html and remove Claim for S3 Bucket deletion
+      - name: AWS -> Delete index.html and remove Claim for S3 Bucket deletion
         run: |
           echo "### Delete index.html from S3 Bucket"
           aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
           kubectl delete claim managed-s3
+
+      - name: Azure -> Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
+        run: |
+          echo "### Create CompositeResourceDefinition (XRD)"
+          kubectl apply -f crossplane-storageaccount/xrd.yaml
+          kubectl get xrd
+          
+          echo "### Wait for XRD to become Offered"
+          kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
+
+          echo "### Create Composition"
+          kubectl apply -f crossplane-storageaccount/composition.yaml
+
+          echo "### Create Claim, which should create S3 Bucket"
+          kubectl apply -f crossplane-storageaccount/claim.yaml
+
+          echo "### Wait until Claim & XR (Composite) are ready"
+          kubectl wait --for=condition=ready --timeout=120s claim account 
+
+          echo "### Show crossplane overall status"
+          kubectl get crossplane 
