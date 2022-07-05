@@ -787,6 +787,164 @@ Apply it with:
 kubectl apply -f crossplane-config/provider-config-azure.yaml
 ```
 
+__The crossplane core Controller and the Provider Azure Controller should now be ready to provision any infrastructure component in Azure!__
+
+
+
+# Provision a StorageAccount in Azure with Crossplane
+
+
+
+You heard right: we don't create a Kubernetes based infrastructure component - but we start with a simple S3 Bucket.
+
+Therefore we can have a look into the Crossplane AWS provider API docs: https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.18.1
+
+
+
+
+### Defining a CompositeResourceDefinition (XRD) for our Storage Account
+
+So our Composite Resource Definition (XRD) for our S3 Bucket could look like [crossplane-storageaccount/xrd.yaml](crossplane-storageaccount/xrd.yaml):
+
+```yaml
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xstoragesazure.crossplane.jonashackt.io
+spec:
+  group: crossplane.jonashackt.io
+  names:
+    kind: XStorageAzure
+    plural: xstoragesazure
+  claimNames:
+    kind: StorageAzure
+    plural: storagesazure
+  
+  defaultCompositionRef:
+    name: storageazure-composition
+
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  location:
+                    type: string
+                required:
+                  - location
+```
+
+Install the XRD into our cluster with:
+
+```shell
+kubectl apply -f crossplane-storageaccount/xrd.yaml
+```
+
+Let's wait for the XRD to become `Offered`:
+
+```shell
+kubectl wait --for=condition=Offered --timeout=120s xrd xstoragesazure.crossplane.jonashackt.io  
+```
+
+
+### Craft a Composition to manage our needed cloud resources
+
+A Composite to manage an Storage Account in Azure with public access for static website hosting could for example look like this [crossplane-storageaccount/composition.yaml](crossplane-storageaccount/composition.yaml):
+
+```yaml
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: storageazure-composition
+  labels:
+    crossplane.io/xrd: xstoragesazure.crossplane.jonashackt.io
+    provider: azure
+spec:
+  compositeTypeRef:
+    apiVersion: crossplane.jonashackt.io/v1alpha1
+    kind: XStorageAzure
+  
+  writeConnectionSecretsToNamespace: crossplane-system
+  
+  resources:
+    - name: storageaccount
+      base:
+        # see https://doc.crds.dev/github.com/crossplane/provider-azure/storage.azure.crossplane.io/Account/v1alpha3@v0.19.0
+        apiVersion: storage.azure.crossplane.io/v1alpha3
+        kind: Account
+        metadata: {}
+        spec:
+          resourceGroupName: resourcegroup
+          storageAccountSpec: 
+            kind: Storage
+            sku:
+              name: Standard_LRS
+              tier: Standard
+      patches:
+        - fromFieldPath: "spec.parameters.location"
+          toFieldPath: "specstorageAccountSpec.location"
+          
+    - name: resourcegroup
+      base:
+        # see https://doc.crds.dev/github.com/crossplane/provider-azure/azure.crossplane.io/ResourceGroup/v1alpha3@v0.19.0
+        apiVersion: azure.crossplane.io/v1alpha3
+        kind: ResourceGroup
+        metadata: {}
+      patches:
+        - fromFieldPath: "spec.parameters.location"
+          toFieldPath: "spec.location"
+```
+
+Install our Composition with 
+
+```shell
+kubectl apply -f crossplane-storageaccount/composition.yaml
+```
+
+
+
+### Craft a Composite Resource (XR) or Claim (XRC)
+
+Crossplane could look quite intimidating when having a first look. There are few guides around to show how to approach a setup when using Crossplane the first time. You can choose between writing an XR __OR__ XRC! You don't need both, since the XR will be generated from the XRC, if you choose to craft a XRC.
+
+https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
+
+Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-s3/claim.yaml):
+
+```yaml
+---
+apiVersion: crossplane.jonashackt.io/v1alpha1
+kind: StorageAzure
+metadata:
+  namespace: default
+  name: managed-storageaccount
+spec:
+  compositionRef:
+    name: storageazure-composition
+  parameters:
+    location: West Europe
+
+```
+
+
+Testdrive with 
+
+```shell
+kubectl apply -f crossplane-storageaccount/claim.yaml
+```
+
 
 
 
