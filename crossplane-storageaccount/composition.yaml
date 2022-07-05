@@ -1,0 +1,42 @@
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: storageazure-composition
+  labels:
+    crossplane.io/xrd: xstoragesazure.crossplane.jonashackt.io
+    provider: azure
+spec:
+  compositeTypeRef:
+    apiVersion: crossplane.jonashackt.io/v1alpha1
+    kind: XStorageAzure
+  
+  writeConnectionSecretsToNamespace: crossplane-system
+  
+  resources:
+    - name: storageaccount
+      base:
+        # see https://doc.crds.dev/github.com/crossplane/provider-azure/storage.azure.crossplane.io/Account/v1alpha3@v0.19.0
+        apiVersion: storage.azure.crossplane.io/v1alpha3
+        kind: Account
+        metadata: {}
+        spec:
+          resourceGroupName: resourcegroup
+          storageAccountSpec: 
+            kind: Storage
+            sku:
+              name: Standard_LRS
+              tier: Standard
+      patches:
+        - fromFieldPath: "spec.parameters.location"
+          toFieldPath: "specstorageAccountSpec.location"
+          
+    - name: resourcegroup
+      base:
+        # see https://doc.crds.dev/github.com/crossplane/provider-azure/azure.crossplane.io/ResourceGroup/v1alpha3@v0.19.0
+        apiVersion: azure.crossplane.io/v1alpha3
+        kind: ResourceGroup
+        metadata: {}
+      patches:
+        - fromFieldPath: "spec.parameters.location"
+          toFieldPath: "spec.location"
