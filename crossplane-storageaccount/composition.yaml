@@ -21,15 +21,18 @@ spec:
         kind: Account
         metadata: {}
         spec:
-          resourceGroupName: resourcegroup
           storageAccountSpec: 
             kind: Storage
             sku:
               name: Standard_LRS
               tier: Standard
       patches:
-        - fromFieldPath: "spec.parameters.location"
-          toFieldPath: "specstorageAccountSpec.location"
+        - fromFieldPath: spec.parameters.storageAccountName
+          toFieldPath: metadata.name
+        - fromFieldPath: spec.parameters.resourceGroupName
+          toFieldPath: spec.resourceGroupName
+        - fromFieldPath: spec.parameters.location
+          toFieldPath: spec.storageAccountSpec.location
           
     - name: resourcegroup
       base:
@@ -38,5 +41,7 @@ spec:
         kind: ResourceGroup
         metadata: {}
       patches:
-        - fromFieldPath: "spec.parameters.location"
-          toFieldPath: "spec.location"
+        - fromFieldPath: spec.parameters.resourceGroupName
+          toFieldPath: metadata.name
+        - fromFieldPath: spec.parameters.location
+          toFieldPath: spec.location

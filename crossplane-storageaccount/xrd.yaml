@@ -32,5 +32,11 @@ spec:
                 properties:
                   location:
                     type: string
+                  resourceGroupName:
+                    type: string
+                  storageAccountName:
+                    type: string
                 required:
                   - location
+                  - resourceGroupName
+                  - storageAccountName
