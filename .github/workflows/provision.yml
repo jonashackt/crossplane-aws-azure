@@ -3,9 +3,15 @@ name: provision
 on: [push]
 
 env:
+  # AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_DEFAULT_REGION: 'eu-central-1'
+  # Azure
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
 jobs:
   provision-kind-with-crossplane:
@@ -72,7 +78,40 @@ jobs:
 
           echo "### Get overall provider status"
           kubectl get provider
-      
+
+      - name: Configure crossplane to access Azure
+        run: |
+          echo "### Create crossplane-azure-provider-key.json file"
+          echo "{
+            \"clientId\": \"$ARM_CLIENT_ID\",
+            \"clientSecret\": \"$ARM_CLIENT_SECRET\",
+            \"subscriptionId\": \"$ARM_SUBSCRIPTION_ID\",
+            \"tenantId\": \"$ARM_TENANT_ID\",
+            \"activeDirectoryEndpointUrl\": \"https://login.microsoftonline.com\",
+            \"resourceManagerEndpointUrl\": \"https://management.azure.com/\",
+            \"activeDirectoryGraphResourceId\": \"https://graph.windows.net/\",
+            \"sqlManagementEndpointUrl\": \"https://management.core.windows.net:8443/\",
+            \"galleryEndpointUrl\": \"https://gallery.azure.com/\",
+            \"managementEndpointUrl\": \"https://management.core.windows.net/\"
+          }" > crossplane-azure-provider-key.json
+          
+          echo "### Create AWS Provider secret"
+          kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
+
+          echo "### Install the crossplane Azure Provider"
+          kubectl apply -f crossplane-config/provider-azure.yaml
+
+          kubectl get provider
+
+          echo "### Wait until AWS Provider is up and running"
+          kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
+
+          echo "### Create ProviderConfig to consume the Secret containing Azure credentials"
+          kubectl apply -f crossplane-config/provider-config-azure.yaml
+
+          echo "### Get overall provider status"
+          kubectl get provider
+
       - name: Create XRD, Composite & Claim to kind cluster
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"

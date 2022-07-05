@@ -683,20 +683,18 @@ If you're using a CI system like GitHub Actions (as this repository is based on)
 On GitHub Actions we need to 
 
 ```shell
-echo "
-{
-  \"appId\": \"$ARM_CLIENT_ID\",
-  \"displayName\": \"servicePrincipalCrossplaneGHActions\",
-  \"password\": \"$ARM_CLIENT_SECRET\",
-  \"tenant\": \"$ARM_TENANT_ID\",
+echo "{
+  \"clientId\": \"$ARM_CLIENT_ID\",
+  \"clientSecret\": \"$ARM_CLIENT_SECRET\",
+  \"subscriptionId\": \"$ARM_SUBSCRIPTION_ID\",
+  \"tenantId\": \"$ARM_TENANT_ID\",
   \"activeDirectoryEndpointUrl\": \"https://login.microsoftonline.com\",
   \"resourceManagerEndpointUrl\": \"https://management.azure.com/\",
   \"activeDirectoryGraphResourceId\": \"https://graph.windows.net/\",
   \"sqlManagementEndpointUrl\": \"https://management.core.windows.net:8443/\",
   \"galleryEndpointUrl\": \"https://gallery.azure.com/\",
   \"managementEndpointUrl\": \"https://management.core.windows.net/\"
-}
-" > crossplane-azure-provider-key.json
+}" > crossplane-azure-provider-key.json
 ```
 
 
@@ -704,9 +702,9 @@ All three needed variables [in GitHub Actions](.github/workflows/provision-azure
 
 ```yaml
 env:
-  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
   ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
   ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 ```
 
