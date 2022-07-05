@@ -1,0 +1,116 @@
+name: provision
+
+on: [push]
+
+env:
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+jobs:
+  provision-kind-with-crossplane:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - name: Install kind (see https://kind.sigs.k8s.io) & crossplane CLI
+        run: |
+          brew install kind
+
+          echo "### Install crossplane CLI & check if it's working"
+          curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
+          sudo mv kubectl-crossplane /usr/local/bin
+          kubectl crossplane --help
+
+      - name: Spin up kind cluster & try to use the cluster
+        run: |
+          kind create cluster --image kindest/node:v1.23.0 --wait 5m
+
+          echo "### Let's try to access our kind cluster via kubectl"
+          kubectl get nodes
+      
+      - name: Install crossplane via Helm
+        run: |
+          echo "### Create a namespace for crossplane"
+          kubectl create namespace crossplane-system
+
+          echo "### Install crossplane via Helm"
+          helm dependency update crossplane-config/install
+          helm upgrade --install crossplane --namespace crossplane-system crossplane-config/install
+
+      - name: Check crossplane status
+        run: |
+          helm list -n crossplane-system
+
+          echo "### Wait for crossplane to become ready before installing Providers"
+          kubectl wait --for=condition=ready pod -l app=crossplane --namespace crossplane-system --timeout=120s
+
+          kubectl get all -n crossplane-system
+      
+      - name: Configure crossplane to access Azure
+        run: |
+          echo "### Create crossplane-azure-provider-key.json"
+          echo "
+          {
+            \"appId\": \"$ARM_CLIENT_ID\",
+            \"displayName\": \"servicePrincipalCrossplaneGHActions\",
+            \"password\": \"$ARM_CLIENT_SECRET\",
+            \"tenant\": \"$ARM_TENANT_ID\"
+          }
+          " > crossplane-azure-provider-key.json
+          
+          echo "### Create AWS Provider secret"
+          kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
+
+          echo "### Install the crossplane AWS Provider"
+          kubectl apply -f crossplane-config/provider-aws.yaml
+
+          kubectl get provider
+
+          echo "### Wait until AWS Provider is up and running"
+          kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
+
+          echo "### Create ProviderConfig to consume the Secret containing AWS credentials"
+          kubectl apply -f crossplane-config/provider-config-aws.yaml
+
+          echo "### Get overall provider status"
+          kubectl get provider
+      
+      - name: Create XRD, Composite & Claim to kind cluster
+        run: |
+          echo "### Create CompositeResourceDefinition (XRD)"
+          kubectl apply -f crossplane-s3/xrd.yaml
+          kubectl get xrd
+          
+          echo "### Wait for XRD to become Offered"
+          kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
+
+          echo "### Create Composition"
+          kubectl apply -f crossplane-s3/composition.yaml
+
+          echo "### Create Claim, which should create S3 Bucket"
+          kubectl apply -f crossplane-s3/claim.yaml
+
+          echo "### Wait until Claim & XR (Composite) are ready"
+          kubectl wait --for=condition=ready --timeout=120s claim managed-s3  
+
+          echo "### Show crossplane overall status"
+          kubectl get crossplane 
+
+      - name: Upload index.html to S3 and check deployment works
+        run: |
+          echo "### Upload index.html to Bucket via AWS CLI"
+          aws s3 sync static s3://microservice-ui-nuxt-js-static-bucket --acl public-read
+
+          echo "### Access S3 Bucket static webseite"
+          curl http://microservice-ui-nuxt-js-static-bucket.s3-website.eu-central-1.amazonaws.com
+
+      - name: Delete index.html and remove Claim for S3 Bucket deletion
+        run: |
+          echo "### Delete index.html from S3 Bucket"
+          aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
+
+          echo "### Remove CompositeResourceClaim to delete S3 Bucket"
+          kubectl delete claim managed-s3

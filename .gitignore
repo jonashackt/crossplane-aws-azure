@@ -1,5 +1,6 @@
 # Exclude credential configuration files like aws-creds.conf
 *-creds.conf
+crossplane-azure-provider-key.json
 
 # Exclude Helm charts lock and packages
 **/**/charts

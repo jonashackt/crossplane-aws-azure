@@ -141,7 +141,7 @@ replicaset.apps/crossplane-rbac-manager-8466dfb7fc   1         1         1      
 
 
 
-## Configure Crossplane to access AWS
+# Configure Crossplane to access AWS
 
 https://crossplane.io/docs/v1.8/reference/configure.html
 
@@ -635,7 +635,166 @@ Now also the S3 Bucket should be removed by crossplane.
 
 
 
-### Publish Crossplane Configuration Package into GitHub Container Registry
+
+
+
+# Configure Crossplane to access Azure
+
+https://crossplane.io/docs/v1.8/cloud-providers/azure/azure-provider.html
+
+https://github.com/crossplane-contrib/provider-azure
+
+
+### Create crossplane-azure-provider-key.json
+
+https://crossplane.io/docs/v1.8/cloud-providers/azure/azure-provider.html#preparing-your-microsoft-azure-account
+
+I assume here that you have [azure CLI installed](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) and you're logged in to your Azure subscription via `az login`. So that the command `az account show` should work on your system. 
+With this prepared we can create a service principal in Azure AD using the following command:
+
+```shell
+az ad sp create-for-rbac --name servicePrincipalCrossplaneGHActions > crossplane-azure-provider-key.json
+```
+
+This produces a `crossplane-azure-provider-key.json` file you should never ever check into version control! For this repository I added `*-creds.conf` to the [.gitignore](.gitignore) file. 
+
+
+If you're using a CI system like GitHub Actions (as this repository is based on), define 3 repository secrets from the output. Choose the `appId` as the `ARM_CLIENT_ID`, the `password` as the `ARM_CLIENT_SECRET` and the `tenant` as the `ARM_TENANT_ID`. Additionally we need to define the `ARM_SUBSCRIPTION_ID` secret. Therefore run a `az account show` (after you logged your CLI into your Azure subscription via `azure login`) and use the value of `"id":`.
+
+![github-actions-secrets-azure](screenshots/github-actions-secrets-azure.png)
+
+On GitHub Actions we need to 
+
+```shell
+echo "
+{
+  \"appId\": \"$ARM_CLIENT_ID\",
+  \"displayName\": \"servicePrincipalCrossplaneGHActions\",
+  \"password\": \"$ARM_CLIENT_SECRET\",
+  \"tenant\": \"$ARM_TENANT_ID\"
+}
+" > crossplane-azure-provider-key.json
+```
+
+
+All three needed variables [in GitHub Actions](.github/workflows/provision-azure.yml) for example look like this:
+
+```yaml
+env:
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+```
+
+
+### Create AWS Provider secret
+
+Now we need to use the `crossplane-azure-provider-key.json` file to create the Crossplane AWS Provider secret:
+
+```
+kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
+```
+
+If everything went well there should be a new `azure-account-creds` Secret ready.
+
+
+
+### Install the Crossplane AWS Provider
+
+https://crossplane.io/docs/v1.8/concepts/packages.html#installing-a-package
+
+We can install crossplane Packages (which can be Providers or Configurations) via the Crossplane CLI with for example:
+
+```shell
+kubectl crossplane install provider crossplane/provider-azure:v0.19.0
+```
+
+Or we can create our own [provider-aws.yaml](crossplane-config/provider-aws.yaml) file like this:
+
+> This `kind: Provider` with `apiVersion: pkg.crossplane.io/v1` is completely different from the `kind: Provider` which we want to consume! These use `apiVersion: meta.pkg.crossplane.io/v1`.
+
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azure
+spec:
+  package: crossplane/provider-azure:v0.19.0
+  packagePullPolicy: Always
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+```
+
+Install the Azure provider using `kubectl`:
+
+```
+kubectl apply -f crossplane-config/provider-azure.yaml
+```
+
+Now our first Crossplane Provider has been installed. You may check it with `kubectl get provider`:
+
+```shell
+$ kubectl get provider
+NAME             INSTALLED   HEALTHY   PACKAGE                            AGE
+provider-azure   True        Unknown   crossplane/provider-azure:v0.19.0  13s
+```
+
+Before we can actually apply a `ProviderConfig` to our Azure provider we have to make sure that it's actually healthy and running. Therefore we can use the `kubectl wait` command like this:
+
+```shell
+kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
+```
+
+Otherwise we may run into errors like this when applying the `ProviderConfig` right after the Provider.
+
+
+### Create ProviderConfig to consume the Secret containing AWS credentials
+
+https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure-the-provider
+
+https://crossplane.io/docs/v1.8/cloud-providers/azure/azure-provider.html#setup-azure-providerconfig
+
+Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-azure.yaml](crossplane-config/provider-config-azure.yaml):
+
+```yaml
+apiVersion: azure.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: azure-account-creds
+      key: creds
+```
+
+> Crossplane resources use the `ProviderConfig` named `default` if no specific ProviderConfig is specified, so this ProviderConfig will be the default for all Azure resources.
+
+The `secretRef.name` and `secretRef.key` has to match the fields of the already created Secret.
+
+Apply it with:
+
+```shell
+kubectl apply -f crossplane-config/provider-config-azure.yaml
+```
+
+
+
+
+
+
+
+
+
+
+
+# TODO:
+
+
+## Publish Crossplane Configuration Package into GitHub Container Registry
 
 Let's package our Composite Resource definitions as a Configuration. Therefore we need to use the Crossplane CLI via <code>kubectl crossplane build configuration</code> (now they are a Package) - and push them to an OCI registry via <code>kubectl crossplane push configuration</code>. With this Configurations can also be easily installed into other Crossplane clusters.
 
@@ -693,7 +852,7 @@ A EKS cluster is a complex AWS construct leveraging different basic AWS services
 
 
 
-# Higher level abstractions - or why it is so hard to write your own Compositions
+## Higher level abstractions - or why it is so hard to write your own Compositions
 
 Looking only at the Crossplane docs and blog I thought something is missing: A curated library of higher level abstractions (like Pulumi Crosswalk). First initiatives from cloud vendors like AWS Blueprints for Crossplane: https://aws.amazon.com/blogs/opensource/introducing-aws-blueprints-for-crossplane/
 
@@ -715,23 +874,6 @@ https://github.com/upbound/platform-ref-aws#install-the-platform-configuration
 
 
 
-
-# Conclusion
-
-Crossplane really promising
-
-
-
-
-Transforming Terraform code into Crossplane CRDs is now possible using Crossplane generator Terrajet https://blog.crossplane.io/announcing-terrajet/
-
-
-
-Crossplane's Roadmap can be viewed as GitHub project board https://github.com/orgs/crossplane/projects?type=classic There are interesting issues for the future:
-
-Crossplane and ArgoCD integration issues: https://github.com/crossplane/crossplane/issues/2773
-
-Follow the Crossplane & Upbound blogs which provides the great insights https://blog.crossplane.io and https://blog.upbound.io/
 
 
 
