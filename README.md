@@ -821,7 +821,7 @@ Therefore we can have a look into the Crossplane AWS provider API docs: https://
 
 ### Defining a CompositeResourceDefinition (XRD) for our Storage Account
 
-So our Composite Resource Definition (XRD) for our S3 Bucket could look like [crossplane-storageaccount/xrd.yaml](crossplane-storageaccount/xrd.yaml):
+So our Composite Resource Definition (XRD) for our Storage Account could look like [crossplane-storageaccount/xrd.yaml](crossplane-storageaccount/xrd.yaml):
 
 ```yaml
 ---
@@ -858,8 +858,14 @@ spec:
                 properties:
                   location:
                     type: string
+                  resourceGroupName:
+                    type: string
+                  storageAccountName:
+                    type: string
                 required:
                   - location
+                  - resourceGroupName
+                  - storageAccountName
 ```
 
 Install the XRD into our cluster with:
@@ -903,15 +909,18 @@ spec:
         kind: Account
         metadata: {}
         spec:
-          resourceGroupName: resourcegroup
           storageAccountSpec: 
             kind: Storage
             sku:
               name: Standard_LRS
               tier: Standard
       patches:
-        - fromFieldPath: "spec.parameters.location"
-          toFieldPath: "specstorageAccountSpec.location"
+        - fromFieldPath: spec.parameters.storageAccountName
+          toFieldPath: metadata.name
+        - fromFieldPath: spec.parameters.resourceGroupName
+          toFieldPath: spec.resourceGroupName
+        - fromFieldPath: spec.parameters.location
+          toFieldPath: spec.storageAccountSpec.location
           
     - name: resourcegroup
       base:
@@ -920,8 +929,10 @@ spec:
         kind: ResourceGroup
         metadata: {}
       patches:
-        - fromFieldPath: "spec.parameters.location"
-          toFieldPath: "spec.location"
+        - fromFieldPath: spec.parameters.resourceGroupName
+          toFieldPath: metadata.name
+        - fromFieldPath: spec.parameters.location
+          toFieldPath: spec.location
 ```
 
 Install our Composition with 
@@ -946,13 +957,14 @@ apiVersion: crossplane.jonashackt.io/v1alpha1
 kind: StorageAzure
 metadata:
   namespace: default
-  name: managed-storageaccount
+  name: account
 spec:
   compositionRef:
     name: storageazure-composition
   parameters:
     location: West Europe
-
+    resourceGroupName: rg-crossplane
+    storageAccountName: account4c8672e
 ```
 
 
@@ -966,6 +978,9 @@ Now have a look into the Azure Portal. Our Resource Group should show up:
 
 ![azure-console-resourcegroup](screenshots/azure-console-resourcegroup.png)
 
+And also our Storage account should be visible inside the group:
+
+![azure-console-storageaccount](screenshots/azure-console-storageaccount.png)
 
 
 

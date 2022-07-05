@@ -3,9 +3,11 @@ apiVersion: crossplane.jonashackt.io/v1alpha1
 kind: StorageAzure
 metadata:
   namespace: default
-  name: managed-storageaccount
+  name: account
 spec:
   compositionRef:
     name: storageazure-composition
   parameters:
     location: West Europe
+    resourceGroupName: rg-crossplane
+    storageAccountName: account4c8672e
