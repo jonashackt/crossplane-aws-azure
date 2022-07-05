@@ -655,12 +655,23 @@ https://github.com/crossplane-contrib/provider-azure
 
 https://crossplane.io/docs/v1.8/cloud-providers/azure/azure-provider.html#preparing-your-microsoft-azure-account
 
-I assume here that you have [azure CLI installed](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) and you're logged in to your Azure subscription via `az login`. So that the command `az account show` should work on your system. 
+I assume here that you have [azure CLI installed](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) and you're logged in to your Azure subscription via `az login`. So that the command `az account show` should work on your system.
+
+> The current Crossplane docs on Azure propose a `az ad sp create-for-rbac` command that isn't working: `ERROR: Usage error: To create role assignments, specify both --role and --scopes.` When using `--role` we must use `--scopes` also. The documentation about the latter isn't easy to grasp https://docs.microsoft.com/en-us/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac at first sight. As there are examples like `--scopes /subscriptions/{subscriptionId}/resourceGroups/{resourceGroup1}` I thought I need to create a resourceGroup before even connecting to Azure to create a resourceGroup with Crossplane (that doesn't make any sense). BUT: It's possible to use `--scopes /subscriptions/{subscriptionId}` here without any resourceGroups, which will create a scope for your whole subscription.
+
+So prepare the `SUBSCRIPTION_ID` variable like this:
+
+```shell
+export SUBSCRIPTION_ID=$(az account show --query id --output tsv)
+```
+
 With this prepared we can create a service principal in Azure AD using the following command:
 
 ```shell
-az ad sp create-for-rbac --name servicePrincipalCrossplaneGHActions > crossplane-azure-provider-key.json
+az ad sp create-for-rbac --sdk-auth --role Owner --scopes /subscriptions/$SUBSCRIPTION_ID --name servicePrincipalCrossplaneGHActions > crossplane-azure-provider-key.json
 ```
+
+> Although this produces a waring message like `WARNING: Option '--sdk-auth' has been deprecated and will be removed in a future release.` we definitely need to use the `--sdk-auth` parameter. Otherwise our Managed Resources will run into errors like `connect failed: cannot get authorizer from client credentials config: failed to get SPT from client credentials: parameter 'activeDirectoryEndpoint' cannot be empty` because there are configuration entries missing in the file like `"activeDirectoryEndpointUrl": "https://login.microsoftonline.com",`.
 
 This produces a `crossplane-azure-provider-key.json` file you should never ever check into version control! For this repository I added `*-creds.conf` to the [.gitignore](.gitignore) file. 
 
@@ -677,7 +688,13 @@ echo "
   \"appId\": \"$ARM_CLIENT_ID\",
   \"displayName\": \"servicePrincipalCrossplaneGHActions\",
   \"password\": \"$ARM_CLIENT_SECRET\",
-  \"tenant\": \"$ARM_TENANT_ID\"
+  \"tenant\": \"$ARM_TENANT_ID\",
+  \"activeDirectoryEndpointUrl\": \"https://login.microsoftonline.com\",
+  \"resourceManagerEndpointUrl\": \"https://management.azure.com/\",
+  \"activeDirectoryGraphResourceId\": \"https://graph.windows.net/\",
+  \"sqlManagementEndpointUrl\": \"https://management.core.windows.net:8443/\",
+  \"galleryEndpointUrl\": \"https://gallery.azure.com/\",
+  \"managementEndpointUrl\": \"https://management.core.windows.net/\"
 }
 " > crossplane-azure-provider-key.json
 ```
@@ -698,7 +715,7 @@ env:
 
 Now we need to use the `crossplane-azure-provider-key.json` file to create the Crossplane AWS Provider secret:
 
-```
+```shell
 kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
 ```
 
@@ -945,6 +962,9 @@ Testdrive with
 kubectl apply -f crossplane-storageaccount/claim.yaml
 ```
 
+Now have a look into the Azure Portal. Our Resource Group should show up:
+
+![azure-console-resourcegroup](screenshots/azure-console-resourcegroup.png)
 
 
 
