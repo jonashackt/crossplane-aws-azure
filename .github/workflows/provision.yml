@@ -172,8 +172,5 @@ jobs:
 
       - name: Azure -> Delete index.html and remove Claim for S3 Bucket deletion
         run: |
-          echo "### Delete index.html from S3 Bucket"
-          aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
-
-          echo "### Remove CompositeResourceClaim to delete S3 Bucket"
-          kubectl delete claim managed-s3
+          echo "### Remove CompositeResourceClaim to delete Storage Account and Resource Group"
+          kubectl delete claim account
