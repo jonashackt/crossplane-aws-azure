@@ -69,9 +69,15 @@ The Crossplane docs tell us to use Helm for installation:
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#install-crossplane
 
-```shell
-kubectl create namespace crossplane-system
+but create the namespace first:
 
+```shell
+  kubectl create namespace crossplane-system
+```
+
+and than:
+
+```shell
 helm repo add crossplane-stable https://charts.crossplane.io/stable
 helm repo update
 
@@ -220,7 +226,7 @@ spec:
 
 Install the AWS provider using `kubectl`:
 
-```
+```shell
 kubectl apply -f crossplane-config/provider-aws.yaml
 ```
 
@@ -688,7 +694,7 @@ env:
 ```
 
 
-### Create AWS Provider secret
+### Create Azure Provider secret
 
 Now we need to use the `crossplane-azure-provider-key.json` file to create the Crossplane AWS Provider secret:
 
@@ -700,7 +706,7 @@ If everything went well there should be a new `azure-account-creds` Secret ready
 
 
 
-### Install the Crossplane AWS Provider
+### Install the Crossplane Azure Provider
 
 https://crossplane.io/docs/v1.8/concepts/packages.html#installing-a-package
 
