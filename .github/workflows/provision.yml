@@ -161,11 +161,19 @@ jobs:
           echo "### Create Composition"
           kubectl apply -f crossplane-storageaccount/composition.yaml
 
-          echo "### Create Claim, which should create S3 Bucket"
+          echo "### Create Claim, which should create ResourceGroup & StorageAccount"
           kubectl apply -f crossplane-storageaccount/claim.yaml
 
           echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=120s claim account 
+          kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane 
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
+
+      - name: AWS -> Delete index.html and remove Claim for S3 Bucket deletion
+        run: |
+          echo "### Delete index.html from S3 Bucket"
+          aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
+
+          echo "### Remove CompositeResourceClaim to delete S3 Bucket"
+          kubectl delete claim managed-s3
