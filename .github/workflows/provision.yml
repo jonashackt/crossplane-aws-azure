@@ -170,7 +170,8 @@ jobs:
           echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane 
 
-      - name: Azure -> Delete index.html and remove Claim for S3 Bucket deletion
+      - name: Azure -> Delete Resources
         run: |
           echo "### Remove CompositeResourceClaim to delete Storage Account and Resource Group"
-          kubectl delete claim account
+          kubectl delete account.storage.azure.crossplane.io/account4c8672e 
+          kubectl delete resourcegroup.azure.crossplane.io/rg-crossplane
