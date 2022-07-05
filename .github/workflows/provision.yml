@@ -103,7 +103,7 @@ jobs:
 
           kubectl get provider
 
-          echo "### Wait until AWS Provider is up and running"
+          echo "### Wait until Azure Provider is up and running"
           kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
 
           echo "### Create ProviderConfig to consume the Secret containing Azure credentials"
@@ -164,13 +164,13 @@ jobs:
           echo "### Create Claim, which should create ResourceGroup & StorageAccount"
           kubectl apply -f crossplane-storageaccount/claim.yaml
 
-          echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane 
-
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
-      - name: AWS -> Delete index.html and remove Claim for S3 Bucket deletion
+          echo "### Wait until Claim & XR (Composite) are ready"
+          kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane 
+
+      - name: Azure -> Delete index.html and remove Claim for S3 Bucket deletion
         run: |
           echo "### Delete index.html from S3 Bucket"
           aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
