@@ -3,7 +3,7 @@
 [![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-kind-s3/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
-Example project showing how to get started with Crossplane to e.g. provision a S3Bucket through K8s CRDs
+Example project showing how to get started with Crossplane, connect it to multiple providers like AWS, Azure - and provision some resources like a S3Bucket or a StorageAccount through K8s CRDs
 
 
 Crossplane https://crossplane.io/ claims to be the "The cloud native control plane framework". It introduces a new way how to manage any cloud resource (beeing it Kubernetes-native or not). It's an alternative Infrastructure-as-Code tooling to Terraform, AWS CDK/Bicep or Pulumi and introduces a higher level of abstraction - based on Kubernetes CRDs. 
@@ -342,7 +342,7 @@ Note that Crossplane will be automatically extended this section. Therefore the 
     status.connectionDetails
 
 
-So our Composite Resource Definition (XRD) for our S3 Bucket could look like [crossplane-s3/xrd.yaml](crossplane-s3/xrd.yaml):
+So our Composite Resource Definition (XRD) for our S3 Bucket could look like [aws/s3/definition.yaml](aws/s3/definition.yaml):
 
 ```yaml
 ---
@@ -420,7 +420,7 @@ The main work in Crossplane has to be done crafting the Compositions. This is be
 
 Detailled docs to many of the possible manifest configurations can be found here https://crossplane.io/docs/v1.8/reference/composition.html#compositions
 
-A Composite to manage an S3 Bucket in AWS with public access for static website hosting could for example look like this [crossplane-s3/composition.yaml](crossplane-s3/composition.yaml):
+A Composite to manage an S3 Bucket in AWS with public access for static website hosting could for example look like this [aws/s3/composition.yaml](aws/s3/composition.yaml):
 
 ```yaml
 ---
@@ -479,7 +479,11 @@ spec:
   #patchSets:
 ```
 
-Install our Composition with `kubectl apply -f composition.yaml`:
+Install our Composition with 
+
+```shell
+kubectl apply -f aws/s3/composition.yaml
+```
 
 
 
@@ -489,7 +493,7 @@ Crossplane could look quite intimidating when having a first look. There are few
 
 https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
 
-Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-s3/claim.yaml):
+Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](aws/s3/claim.yaml):
 
 ```yaml
 ---
@@ -514,7 +518,7 @@ spec:
 ```
 
 
-Testdrive with `kubectl apply -f claim.yaml`.
+Testdrive with `kubectl apply -f aws/s3/claim.yaml`.
 
 When somthing goes wrong with the validation, this could look like this:
 
@@ -819,7 +823,7 @@ Therefore we can have a look into the Crossplane AWS provider API docs: https://
 
 ### Defining a CompositeResourceDefinition (XRD) for our Storage Account
 
-So our Composite Resource Definition (XRD) for our Storage Account could look like [crossplane-storageaccount/xrd.yaml](crossplane-storageaccount/xrd.yaml):
+So our Composite Resource Definition (XRD) for our Storage Account could look like [azure/storageaccount/definition.yaml](azure/storageaccount/definition.yaml):
 
 ```yaml
 ---
@@ -869,7 +873,7 @@ spec:
 Install the XRD into our cluster with:
 
 ```shell
-kubectl apply -f crossplane-storageaccount/xrd.yaml
+kubectl apply -f azure/storageaccount/definition.yaml
 ```
 
 Let's wait for the XRD to become `Offered`:
@@ -881,7 +885,7 @@ kubectl wait --for=condition=Offered --timeout=120s xrd xstoragesazure.crossplan
 
 ### Craft a Composition to manage our needed cloud resources
 
-A Composite to manage an Storage Account in Azure with public access for static website hosting could for example look like this [crossplane-storageaccount/composition.yaml](crossplane-storageaccount/composition.yaml):
+A Composite to manage an Storage Account in Azure with public access for static website hosting could for example look like this [azure/storageaccount/composition.yaml](azure/storageaccount/composition.yaml):
 
 ```yaml
 ---
@@ -936,7 +940,7 @@ spec:
 Install our Composition with 
 
 ```shell
-kubectl apply -f crossplane-storageaccount/composition.yaml
+kubectl apply -f azure/storageaccount/composition.yaml
 ```
 
 
@@ -947,7 +951,7 @@ Crossplane could look quite intimidating when having a first look. There are few
 
 https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
 
-Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-s3/claim.yaml):
+Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](azure/storageaccount/claim.yaml):
 
 ```yaml
 ---
@@ -969,7 +973,7 @@ spec:
 Testdrive with 
 
 ```shell
-kubectl apply -f crossplane-storageaccount/claim.yaml
+kubectl apply -f azure/storageaccount/claim.yaml
 ```
 
 Now have a look into the Azure Portal. Our Resource Group should show up:
@@ -999,7 +1003,7 @@ Therefore we need a `crossplane.yaml` file as described in https://crossplane.io
 
 See also https://crossplane.io/docs/v1.8/concepts/packages.html#configuration-packages
 
-Our [crossplane-s3/crossplane.yaml](crossplane-s3/crossplane.yaml) is of `kind: Configuration` and defines the minimum crossplane version needed alongside the crossplane AWS provider:
+Our [aws/s3/crossplane.yaml](aws/s3/crossplane.yaml) is of `kind: Configuration` and defines the minimum crossplane version needed alongside the crossplane AWS provider:
 
 ```yaml
 apiVersion: meta.pkg.crossplane.io/v1
@@ -1027,7 +1031,7 @@ Really strange, getting
 
 ```shell
 kubectl crossplane build configuration
-kubectl crossplane: error: failed to build package: failed to parse package: {path:/Users/jonashecht/dev/kubernetes/crossplane-kind-eks/crossplane-s3/composition.yaml position:0}: no kind "S3Bucket" is registered for version "crossplane.jonashackt.io/v1alpha1" in scheme "/home/runner/work/crossplane/crossplane/internal/xpkg/scheme.go:47"
+kubectl crossplane: error: failed to build package: failed to parse package: {path:/Users/jonashecht/dev/kubernetes/crossplane-kind-eks/aws/s3/composition.yaml position:0}: no kind "S3Bucket" is registered for version "crossplane.jonashackt.io/v1alpha1" in scheme "/home/runner/work/crossplane/crossplane/internal/xpkg/scheme.go:47"
 ```
 
 

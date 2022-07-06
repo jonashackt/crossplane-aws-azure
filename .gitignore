@@ -2,6 +2,9 @@
 *-creds.conf
 crossplane-azure-provider-key.json
 
+.idea
+*.iml
+
 # Exclude Helm charts lock and packages
 **/**/charts
 **/**/Chart.lock
