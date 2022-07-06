@@ -115,17 +115,17 @@ jobs:
       - name: AWS -> Create XRD, Composite & Claim to create S3 Bucket
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
-          kubectl apply -f crossplane-s3/xrd.yaml
+          kubectl apply -f aws/s3/definition.yaml
           kubectl get xrd
           
           echo "### Wait for XRD to become Offered"
           kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 
           echo "### Create Composition"
-          kubectl apply -f crossplane-s3/composition.yaml
+          kubectl apply -f aws/s3/composition.yaml
 
           echo "### Create Claim, which should create S3 Bucket"
-          kubectl apply -f crossplane-s3/claim.yaml
+          kubectl apply -f aws/s3/claim.yaml
 
           echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s claim managed-s3  
@@ -152,17 +152,17 @@ jobs:
       - name: Azure -> Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
-          kubectl apply -f crossplane-storageaccount/xrd.yaml
+          kubectl apply -f azure/storageaccount/definition.yaml
           kubectl get xrd
           
           echo "### Wait for XRD to become Offered"
           kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 
           echo "### Create Composition"
-          kubectl apply -f crossplane-storageaccount/composition.yaml
+          kubectl apply -f azure/storageaccount/composition.yaml
 
           echo "### Create Claim, which should create ResourceGroup & StorageAccount"
-          kubectl apply -f crossplane-storageaccount/claim.yaml
+          kubectl apply -f azure/storageaccount/claim.yaml
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
