@@ -136,10 +136,10 @@ jobs:
       - name: AWS -> Upload index.html to S3 and check deployment works
         run: |
           echo "### Upload index.html to Bucket via AWS CLI"
-          aws s3 sync static s3://microservice-ui-nuxt-js-static-bucket --acl public-read
+          aws s3 sync static s3://microservice-ui-nuxt-js-static-bucket2 --acl public-read
 
           echo "### Access S3 Bucket static webseite"
-          curl http://microservice-ui-nuxt-js-static-bucket.s3-website.eu-central-1.amazonaws.com
+          curl http://microservice-ui-nuxt-js-static-bucket2.s3-website.eu-central-1.amazonaws.com
 
       - name: AWS -> Delete index.html and remove Claim for S3 Bucket deletion
         run: |

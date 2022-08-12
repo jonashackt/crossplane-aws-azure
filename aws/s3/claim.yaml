@@ -16,5 +16,5 @@ spec:
   # Parameters for the Composition to provide the Managed Resources (MR) with
   # to create the actual infrastructure components
   parameters:
-    bucketName: microservice-ui-nuxt-js-static-bucket
+    bucketName: microservice-ui-nuxt-js-static-bucket2
     region: eu-central-1

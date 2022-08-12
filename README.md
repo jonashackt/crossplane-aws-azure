@@ -513,7 +513,7 @@ spec:
   # Parameters for the Composition to provide the Managed Resources (MR) with
   # to create the actual infrastructure components
   parameters:
-    bucketName: microservice-ui-nuxt-js-static-bucket
+    bucketName: microservice-ui-nuxt-js-static-bucket2
     region: eu-central-1
 ```
 
@@ -599,11 +599,11 @@ kubectl get crossplane -l crossplane.io/claim-name=managed-s3
 ```
 
 
-Check if the S3 Bucket has been created successfully via aws CLI with `aws s3 ls | grep microservice-ui-nuxt-js-static-bucket`.
+Check if the S3 Bucket has been created successfully via aws CLI with `aws s3 ls | grep microservice-ui-nuxt-js-static-bucket2`.
 
 ```shell
-$ aws s3 ls | grep microservice-ui-nuxt-js-static-bucket
-2022-06-27 11:56:26 microservice-ui-nuxt-js-static-bucket
+$ aws s3 ls | grep microservice-ui-nuxt-js-static-bucket2
+2022-06-27 11:56:26 microservice-ui-nuxt-js-static-bucket2
 ```
 
 Our bucket should be there! We can also double check in the AWS console:
@@ -613,10 +613,10 @@ Our bucket should be there! We can also double check in the AWS console:
 Let's deploy our app (a simple [index.html](static/index.html)) to our S3 Bucket using the aws CLI like this:
 
 ```shell
-aws s3 sync static s3://microservice-ui-nuxt-js-static-bucket --acl public-read
+aws s3 sync static s3://microservice-ui-nuxt-js-static-bucket2 --acl public-read
 ```
 
-Now we can open up http://microservice-ui-nuxt-js-static-bucket.s3-website.eu-central-1.amazonaws.com/ in our Browser and should see our app beeing deployed:
+Now we can open up http://microservice-ui-nuxt-js-static-bucket2.s3-website.eu-central-1.amazonaws.com/ in our Browser and should see our app beeing deployed:
 
 ![s3-static-webseite-deployed](screenshots/s3-static-webseite-deployed.png)
 
@@ -632,7 +632,7 @@ Before removing the claim, we should remove our `index.html` - otherwise we'll r
 So first delete the `index.html`:
 
 ```shell
-aws s3 rm s3://microservice-ui-nuxt-js-static-bucket/index.html
+aws s3 rm s3://microservice-ui-nuxt-js-static-bucket2/index.html
 ```
 
 Finally remove our S3 Bucket again with 
@@ -715,7 +715,7 @@ env:
 
 ### Create Azure Provider secret
 
-Now we need to use the `crossplane-azure-provider-key.json` file to create the Crossplane AWS Provider secret:
+Now we need to use the `crossplane-azure-provider-key.json` file to create the Crossplane Azure Provider secret:
 
 ```shell
 kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
@@ -736,8 +736,6 @@ kubectl crossplane install provider crossplane/provider-azure:v0.19.0
 ```
 
 Or we can create our own [provider-aws.yaml](crossplane-config/provider-aws.yaml) file like this:
-
-> This `kind: Provider` with `apiVersion: pkg.crossplane.io/v1` is completely different from the `kind: Provider` which we want to consume! These use `apiVersion: meta.pkg.crossplane.io/v1`.
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
@@ -812,12 +810,9 @@ __The crossplane core Controller and the Provider Azure Controller should now be
 
 # Provision a StorageAccount in Azure with Crossplane
 
+https://doc.crds.dev/github.com/crossplane/provider-azure/storage.azure.crossplane.io/Account/v1alpha3@v0.19.0
 
-
-You heard right: we don't create a Kubernetes based infrastructure component - but we start with a simple S3 Bucket.
-
-Therefore we can have a look into the Crossplane AWS provider API docs: https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.18.1
-
+https://doc.crds.dev/github.com/crossplane/provider-azure/azure.crossplane.io/ResourceGroup/v1alpha3@v0.19.0
 
 
 
@@ -947,11 +942,7 @@ kubectl apply -f azure/storageaccount/composition.yaml
 
 ### Craft a Composite Resource (XR) or Claim (XRC)
 
-Crossplane could look quite intimidating when having a first look. There are few guides around to show how to approach a setup when using Crossplane the first time. You can choose between writing an XR __OR__ XRC! You don't need both, since the XR will be generated from the XRC, if you choose to craft a XRC.
-
-https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
-
-Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](azure/storageaccount/claim.yaml):
+Since we want to create a Storage Account, here's an suggestion for an [claim.yaml](azure/storageaccount/claim.yaml):
 
 ```yaml
 ---
