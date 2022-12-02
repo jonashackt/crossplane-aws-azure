@@ -150,7 +150,7 @@ jobs:
           aws s3 rm s3://microservice-ui-nuxt-js-static-bucket2/index.html
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
-          kubectl delete claim managed-s3aöslfjdldfs
+          kubectl delete claim managed-s3
 
       - name: Azure -> Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
         run: |
