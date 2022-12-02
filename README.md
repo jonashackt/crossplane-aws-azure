@@ -1,6 +1,6 @@
-# crossplane-kind-s3
-[![Build Status](https://github.com/jonashackt/crossplane-kind-s3/workflows/provision/badge.svg)](https://github.com/jonashackt/crossplane-kind-s3/actions)
-[![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-kind-s3/blob/master/LICENSE)
+# crossplane-aws-azure
+[![Build Status](https://github.com/jonashackt/crossplane-aws-azure/workflows/provision/badge.svg)](https://github.com/jonashackt/crossplane-aws-azure/actions)
+[![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-aws-azure/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
 Example project showing how to get started with Crossplane, connect it to multiple providers like AWS, Azure - and provision some resources like a S3Bucket or a StorageAccount through K8s CRDs
@@ -205,7 +205,7 @@ https://crossplane.io/docs/v1.8/concepts/packages.html#installing-a-package
 We can install crossplane Packages (which can be Providers or Configurations) via the Crossplane CLI with for example:
 
 ```shell
-kubectl crossplane install provider crossplane/provider-aws:v0.22.0
+kubectl crossplane install provider crossplanecontrib/provider-aws:v0.22.0
 ```
 
 Or we can create our own [provider-aws.yaml](crossplane-config/provider-aws.yaml) file like this:
@@ -218,7 +218,7 @@ kind: Provider
 metadata:
   name: provider-aws
 spec:
-  package: crossplane/provider-aws:v0.28.1
+  package: crossplanecontrib/provider-aws:v0.34.0
   packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
@@ -236,17 +236,17 @@ The `package` version in combination with the `packagePullPolicy` configuration 
 $ kubectl get crossplane
 ...
 NAME                                                           HEALTHY   REVISION   IMAGE                             STATE      DEP-FOUND   DEP-INSTALLED   AGE
-providerrevision.pkg.crossplane.io/provider-aws-2189bc61e0bd   True      1          crossplane/provider-aws:v0.22.0   Inactive                               6d22h
-providerrevision.pkg.crossplane.io/provider-aws-d87796863f95   True      2          crossplane/provider-aws:v0.28.1   Active                                 43h
+providerrevision.pkg.crossplane.io/provider-aws-2189bc61e0bd   True      1          crossplanecontrib/provider-aws:v0.33.0   Inactive                               6d22h
+providerrevision.pkg.crossplane.io/provider-aws-d87796863f95   True      2          crossplanecontrib/provider-aws:v0.34.0   Active                                 43h
 ...
 ```
 
 Now our first Crossplane Provider has been installed. You may check it with `kubectl get provider`:
 
 ```shell
-$ kubectl get provider
+$ kubectl get provider.pkg.crossplane.io
 NAME           INSTALLED   HEALTHY   PACKAGE                           AGE
-provider-aws   True        Unknown   crossplane/provider-aws:v0.22.0   13s
+provider-aws   True        Unknown   crossplanecontrib/provider-aws:v0.34.0   13s
 ```
 
 Before we can actually apply a `ProviderConfig` to our AWS provider we have to make sure that it's actually healthy and running. Therefore we can use the `kubectl wait` command like this:
@@ -567,10 +567,10 @@ NAME                                               AGE
 composition.apiextensions.crossplane.io/s3bucket   2d17h
 
 NAME                                      INSTALLED   HEALTHY   PACKAGE                           AGE
-provider.pkg.crossplane.io/provider-aws   True        True      crossplane/provider-aws:v0.22.0   4d21h
+provider.pkg.crossplane.io/provider-aws   True        True      crossplanecontrib/provider-aws:v0.34.0   4d21h
 
 NAME                                                           HEALTHY   REVISION   IMAGE                             STATE    DEP-FOUND   DEP-INSTALLED   AGE
-providerrevision.pkg.crossplane.io/provider-aws-2189bc61e0bd   True      1          crossplane/provider-aws:v0.22.0   Active                               4d21h
+providerrevision.pkg.crossplane.io/provider-aws-2189bc61e0bd   True      1          crossplanecontrib/provider-aws:v0.34.0   Active                               4d21h
 
 NAME                                        AGE     TYPE         DEFAULT-SCOPE
 storeconfig.secrets.crossplane.io/default   5d23h   Kubernetes   crossplane-system
@@ -1005,8 +1005,8 @@ spec:
   crossplane:
     version: ">=v1.8"
   dependsOn:
-    - provider: crossplane/provider-aws
-      version: v0.28.1
+    - provider: crossplanecontrib/provider-aws
+      version: ">=v0.33.0"
 ```
 
 Having this `crossplane.yaml` in place we can build our Configuration at last. On a command line go into the directory where the `crossplane.yaml` resides and run the `kubectl crossplane build` command:

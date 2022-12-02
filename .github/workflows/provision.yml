@@ -22,7 +22,7 @@ jobs:
 
       - name: Install kind (see https://kind.sigs.k8s.io) & crossplane CLI
         run: |
-          echo "Add homebrew to path as described in https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2004-Readme.md#notes"
+          echo "### Add homebrew to path as described in https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2004-Readme.md#notes"
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
           brew install kind
@@ -71,7 +71,7 @@ jobs:
           echo "### Install the crossplane AWS Provider"
           kubectl apply -f crossplane-config/provider-aws.yaml
 
-          kubectl get provider
+          kubectl get provider.pkg.crossplane.io
 
           echo "### Wait until AWS Provider is up and running"
           kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
