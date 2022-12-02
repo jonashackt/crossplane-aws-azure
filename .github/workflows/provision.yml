@@ -104,7 +104,7 @@ jobs:
           echo "### Install the crossplane Azure Provider"
           kubectl apply -f crossplane-config/provider-azure.yaml
 
-          kubectl get provider
+          kubectl get provider.pkg.crossplane.io
 
           echo "### Wait until Azure Provider is up and running"
           kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
@@ -176,5 +176,5 @@ jobs:
       - name: Azure -> Delete Resources
         run: |
           echo "### Remove CompositeResourceClaim to delete Storage Account and Resource Group"
-          kubectl delete account.storage.azure.crossplane.io/account4c8672e 
+          kubectl delete account.storage.azure.crossplane.io/account4c8672f 
           kubectl delete resourcegroup.azure.crossplane.io/rg-crossplane
