@@ -10,4 +10,4 @@ spec:
   parameters:
     location: West Europe
     resourceGroupName: rg-crossplane
-    storageAccountName: account4c8672e
+    storageAccountName: account4c8672f

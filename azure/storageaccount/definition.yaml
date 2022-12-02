@@ -16,7 +16,7 @@ spec:
     name: storageazure-composition
 
   versions:
-  - name: v1alpha1
+  - name: v1alpha3
     served: true
     referenceable: true
     # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
