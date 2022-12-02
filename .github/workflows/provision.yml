@@ -22,6 +22,9 @@ jobs:
 
       - name: Install kind (see https://kind.sigs.k8s.io) & crossplane CLI
         run: |
+          echo "Add homebrew to path as described in https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2004-Readme.md#notes"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          
           brew install kind
 
           echo "### Install crossplane CLI & check if it's working"
@@ -147,7 +150,7 @@ jobs:
           aws s3 rm s3://microservice-ui-nuxt-js-static-bucket2/index.html
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
-          kubectl delete claim managed-s3
+          kubectl delete claim managed-s3aöslfjdldfs
 
       - name: Azure -> Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
         run: |
