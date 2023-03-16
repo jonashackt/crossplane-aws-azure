@@ -34,7 +34,7 @@ jobs:
 
       - name: Spin up kind cluster & try to use the cluster
         run: |
-          kind create cluster --image kindest/node:v1.25.3 --wait 5m
+          kind create cluster --image kindest/node:v1.26.2 --wait 5m
 
           echo "### Let's try to access our kind cluster via kubectl"
           kubectl get nodes
