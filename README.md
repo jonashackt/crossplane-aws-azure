@@ -72,7 +72,7 @@ https://crossplane.io/docs/v1.8/getting-started/install-configure.html#install-c
 but create the namespace first:
 
 ```shell
-  kubectl create namespace crossplane-system
+kubectl create namespace crossplane-system
 ```
 
 and than:
@@ -218,7 +218,7 @@ kind: Provider
 metadata:
   name: provider-aws
 spec:
-  package: crossplanecontrib/provider-aws:v0.34.0
+  package: crossplanecontrib/provider-aws:v0.39.0
   packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
@@ -402,7 +402,7 @@ spec:
 Install the XRD into our cluster with:
 
 ```shell
-kubectl apply -f xrd.yaml
+kubectl apply -f aws/s3/definition.yaml
 ```
 
 We can double check the CRDs beeing created with `kubectl get crds` and filter them using `grep` to our group name `crossplane.jonashackt.io`:
@@ -518,7 +518,11 @@ spec:
 ```
 
 
-Testdrive with `kubectl apply -f aws/s3/claim.yaml`.
+Testdrive with:
+
+```shell
+kubectl apply -f aws/s3/claim.yaml
+```
 
 When somthing goes wrong with the validation, this could look like this:
 
@@ -976,6 +980,41 @@ And also our Storage account should be visible inside the group:
 ![azure-console-storageaccount](screenshots/azure-console-storageaccount.png)
 
 
+
+
+
+# The problem with Open Source Crossplane: Provider Coverage Problem
+
+See this blog post https://blog.upbound.io/first-official-providers/ and the paragraph `Provider Coverage Problem`:
+
+> The Crossplane community has been adding CustomResourceDefinitions (CRDs) to cover the API surface, but the pace is unable to catch up with users who are blocked from getting into production with Crossplane due to the lack of coverage. To give you an idea, AWS has ~1000 resources and the classic AWS provider has yet to cover ~200 as of writing.
+
+Now with the classic AWS provider https://marketplace.upbound.io/providers/crossplane-contrib/provider-aws/v0.39.0/crds you have around 180 CRDs available. If you only need the CRDs that are provided by this classic provider, everything is okay. But I recently stumbled upon a new security default implementation of AWS S3: https://github.com/jonashackt/crossplane-aws-azure/issues/12
+
+This project stopped to work, simply since AWS doesn't support Access Control Lists (ACLs) for all new S3 Buckets anymore. See https://github.com/hashicorp/terraform-provider-aws/issues/28353
+
+> Starting in April 2023, Amazon S3 will introduce two new default bucket security settings by automatically enabling S3 Block Public Access and disabling S3 access control lists (ACLs) for all new S3 buckets.
+
+This in fact means, that we not only need the `Bucket` CRD, but we additionally need `BucketACL`, `BucketPublicAccessBlock` and `BucketOwnershipControls`, which are only available in the so called official Upbound providers with their 901 CRDs: https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/crds
+
+
+Up until now I didn't really know the difference between the classic providers and the official providers. But the official providers are based on the tool Upjet https://github.com/upbound/upjet/ which is the successor of the former Terrajet https://github.com/crossplane/terrajet, where Terraform modules are used to generate Crossplane CRDs. With this approach, every API Terraform provides is also available in Crossplane. Upjet is currently used to generate all CRDs for the official AWS, Azure and GCP providers.
+
+And with Upjet it's possible to generate really any Crossplane provider from Terraform, meaning one can rely on every Provider Terraform already has: https://registry.terraform.io/browse/providers
+
+Why not use Terraform then you may ask. Theres a good post here https://blog.crossplane.io/crossplane-vs-terraform/ which makes the point, that Terraform can only be used from a bash script - but Crossplane delivers a control plane based approach, which continously reconciles all infrastructure configured inside of it.
+
+So TLDR: To fix the error https://github.com/jonashackt/crossplane-aws-azure/issues/12
+
+```shell
+S3 creation error: CannotCreateExternalResource managed/bucket.s3.aws.crossplane.io failed to create the Bucket: InvalidBucketAclWithObjectOwnership: Bucket cannot have ACLs set with ObjectOwnership's BucketOwnerEnforced setting
+```
+
+we need to switch over to the official AWS provider based on Upjet. Do we need to use the UXP (Universal Control Plane) flavour of Crossplane for that? No, the docs https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/docs/configuration state:
+
+> The Upbound AWS official provider may also be used with upstream Crossplane.
+
+So let's use the provider inside our project!
 
 
 
