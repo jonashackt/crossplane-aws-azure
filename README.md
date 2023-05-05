@@ -59,7 +59,7 @@ Now the `kubectl crossplane --help` command should be ready to use.
 Now spin up a local kind cluster
 
 ```shell
-kind create cluster --image kindest/node:v1.23.0 --wait 5m
+kind create cluster --image kindest/node:v1.27.1 --wait 5m
 ```
 
 

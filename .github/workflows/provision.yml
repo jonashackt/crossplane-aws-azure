@@ -3,6 +3,7 @@ name: provision
 on: [push]
 
 env:
+  KIND_NODE_VERSION: v1.27.1
   # AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -34,7 +35,7 @@ jobs:
 
       - name: Spin up kind cluster & try to use the cluster
         run: |
-          kind create cluster --image kindest/node:v1.26.2 --wait 5m
+          kind create cluster --image "kindest/node:$KIND_NODE_VERSION" --wait 5m
 
           echo "### Let's try to access our kind cluster via kubectl"
           kubectl get nodes
