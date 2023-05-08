@@ -57,6 +57,53 @@ spec:
           toFieldPath: "metadata.name"
         - fromFieldPath: "spec.parameters.region"
           toFieldPath: "spec.forProvider.locationConstraint"
+
+    - name: bucketpolicy
+      base:
+        # see https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.39.0
+        apiVersion: s3.aws.crossplane.io/v1alpha3
+        kind: BucketPolicy
+        metadata:
+          name: bucketpolicy-public
+        spec:
+          forProvider:
+            region: us-east-1
+            bucketNameRef:
+              name: test-bucket
+            policy:
+              version: '2012-10-17'
+              statements:
+                - action:
+                    - s3:ListBucket
+                    - s3:GetBucketLocation
+                    - s3:ListBucketMultipartUploads
+                    - s3:PutBucketCORS
+                  effect: Allow
+                  principal:
+                    awsPrincipals:
+                      - iamUserArnSelector:
+                          matchLabels:
+                            example: "true"
+                  resource:
+                    # This is unfortunately not currently able to be inferred from a
+                    # reference to test-bucket, and must therefore be set to the ARN of
+                    # test-bucket (i.e. its actual external name).
+                    - "arn:aws:s3:::crossplane-example-bucket"
+                  condition:
+                  - operatorKey: StringEquals
+                    conditions:
+                      - key: "aws:Key1"
+                        stringValue: "value1"
+                      - key: "aws:Key2"
+                        stringValue: "value2"
+                  - operatorKey: IpAddress
+                    conditions:
+                      - key: "aws:SourceIp"
+                        stringValue: "192.0.2.0/24"
+                  - operatorKey: NotIpAddress
+                    conditions:
+                      - key: "aws:SourceIp"
+                        stringValue: "192.0.2.188/32"
   
   # If you find yourself repeating patches a lot you can group them as a named
   # 'patch set' then use a PatchSet type patch to reference them.
