@@ -1018,6 +1018,20 @@ So let's use the provider inside our project!
 
 
 
+https://github.com/hashicorp/terraform-provider-aws/issues/28353
+
+https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl
+
+https://github.com/aws/aws-cdk/issues/25288#issuecomment-1522011311
+
+https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.39.0
+
+https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-policy-language-overview.html
+
+https://stackoverflow.com/questions/76097031/aws-s3-bucket-cannot-have-acls-set-with-objectownerships-bucketownerenforced-s 
+
+https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1 
+
 
 
 
