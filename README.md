@@ -84,7 +84,7 @@ helm repo update
 helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane
 ```
 
-As an Renovate-powered alternative we can [create our own simple [Chart.yaml](crossplane-config/install/Chart.yaml) to enable automatic updates](https://stackoverflow.com/a/71765472/4964553) of our installation if new crossplane versions get released:
+As an Renovate-powered alternative we can [create our own simple [Chart.yaml](crossplane-install/Chart.yaml) to enable automatic updates](https://stackoverflow.com/a/71765472/4964553) of our installation if new crossplane versions get released:
 
 ```yaml
 apiVersion: v2
@@ -101,8 +101,8 @@ dependencies:
 To install Crossplane using our own `Chart.yaml` simply run:
 
 ```shell
-helm dependency update crossplane-config/install
-helm upgrade --install crossplane --namespace crossplane-system crossplane-config/install
+helm dependency update crossplane-install
+helm upgrade --install crossplane --namespace crossplane-system crossplane-install
 ```
 
 Be sure to exclude `charts` and `Chart.lock` files via [.gitignore](.gitignore).
@@ -208,7 +208,7 @@ We can install crossplane Packages (which can be Providers or Configurations) vi
 kubectl crossplane install provider crossplanecontrib/provider-aws:v0.22.0
 ```
 
-Or we can create our own [provider-aws.yaml](crossplane-config/provider-aws.yaml) file like this:
+Or we can create our own [provider-aws.yaml](provider-aws-crossplane-contrib/config/provider-aws.yaml) file like this:
 
 > This `kind: Provider` with `apiVersion: pkg.crossplane.io/v1` is completely different from the `kind: Provider` which we want to consume! These use `apiVersion: meta.pkg.crossplane.io/v1`.
 
@@ -227,7 +227,7 @@ spec:
 Install the AWS provider using `kubectl`:
 
 ```shell
-kubectl apply -f crossplane-config/provider-aws.yaml
+kubectl apply -f provider-aws-crossplane-contrib/config/provider-aws.yaml
 ```
 
 The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. I'am not sure, if the Crossplane team will provide an installation method where we can use tools like Renovate to keep our Crossplane providers up to date. A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
@@ -264,7 +264,7 @@ https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure
 
 https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html#optional-setup-aws-provider-manually
 
-Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-aws.yaml](crossplane-config/provider-config-aws.yaml):
+Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-aws.yaml](provider-aws-crossplane-contrib/config/provider-config-aws.yaml):
 
 ```yaml
 apiVersion: aws.crossplane.io/v1beta1
@@ -287,7 +287,7 @@ The `secretRef.name` and `secretRef.key` has to match the fields of the already 
 Apply it with:
 
 ```shell
-kubectl apply -f crossplane-config/provider-config-aws.yaml
+kubectl apply -f provider-aws-crossplane-contrib/config/provider-config-aws.yaml
 ```
 
 
@@ -739,7 +739,7 @@ We can install crossplane Packages (which can be Providers or Configurations) vi
 kubectl crossplane install provider crossplane/provider-azure:v0.19.0
 ```
 
-Or we can create our own [provider-aws.yaml](crossplane-config/provider-aws.yaml) file like this:
+Or we can create our own [provider-aws.yaml](provider-aws-crossplane-contrib/config/provider-aws.yaml) file like this:
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
@@ -756,7 +756,7 @@ spec:
 Install the Azure provider using `kubectl`:
 
 ```
-kubectl apply -f crossplane-config/provider-azure.yaml
+kubectl apply -f provider-azure-crossplane-contrib/config/provider-azure.yaml
 ```
 
 Now our first Crossplane Provider has been installed. You may check it with `kubectl get provider`:
@@ -782,7 +782,7 @@ https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure
 
 https://crossplane.io/docs/v1.8/cloud-providers/azure/azure-provider.html#setup-azure-providerconfig
 
-Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-azure.yaml](crossplane-config/provider-config-azure.yaml):
+Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-azure.yaml](provider-azure-crossplane-contrib/config/provider-config-azure.yaml):
 
 ```yaml
 apiVersion: azure.crossplane.io/v1beta1
@@ -805,7 +805,7 @@ The `secretRef.name` and `secretRef.key` has to match the fields of the already 
 Apply it with:
 
 ```shell
-kubectl apply -f crossplane-config/provider-config-azure.yaml
+kubectl apply -f provider-azure-crossplane-contrib/config/provider-config-azure.yaml
 ```
 
 __The crossplane core Controller and the Provider Azure Controller should now be ready to provision any infrastructure component in Azure!__
@@ -1031,6 +1031,50 @@ https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-policy-language-ove
 https://stackoverflow.com/questions/76097031/aws-s3-bucket-cannot-have-acls-set-with-objectownerships-bucketownerenforced-s 
 
 https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1 
+
+
+
+## Using the official Upjet generated AWS Provider
+
+If we now integrate the offical AWS provider also https://github.com/upbound/provider-aws, we need to restructure our repo folders. As everything in crossplane is related to providers, these should be the top level directories. So the `crossplane-config` folder is gone, since we always configure a specific provider:
+
+```shell
+├── crossplane-install
+│   └── Chart.yaml
+├── provider-aws-crossplane-contrib
+│   ├── config
+│   │   ├── provider-aws.yaml
+│   │   └── provider-config-aws.yaml
+│   └── s3
+│       ├── claim.yaml
+│       ├── composition.yaml
+│       ├── crossplane.yaml
+│       └── definition.yaml
+├── provider-aws-upbound
+│   ├── config
+│   └── s3
+│       ├── claim.yaml
+│       ├── composition-try-using-new-s3-sec.yaml
+│       ├── crossplane.yaml
+│       └── definition.yaml
+├── provider-azure-crossplane-contrib
+│   ├── config
+│   │   ├── provider-azure.yaml
+│   │   └── provider-config-azure.yaml
+│   └── storageaccount
+│       ├── claim.yaml
+│       ├── composition.yaml
+│       └── definition.yaml
+```
+
+
+
+
+
+
+
+
+
 
 
 
