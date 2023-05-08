@@ -342,7 +342,7 @@ Note that Crossplane will be automatically extended this section. Therefore the 
     status.connectionDetails
 
 
-So our Composite Resource Definition (XRD) for our S3 Bucket could look like [aws/s3/definition.yaml](aws/s3/definition.yaml):
+So our Composite Resource Definition (XRD) for our S3 Bucket could look like [provider-aws-crossplane-contrib/s3/definition.yaml](provider-aws-crossplane-contrib/s3/definition.yaml):
 
 ```yaml
 ---
@@ -402,7 +402,7 @@ spec:
 Install the XRD into our cluster with:
 
 ```shell
-kubectl apply -f aws/s3/definition.yaml
+kubectl apply -f provider-aws-crossplane-contrib/s3/definition.yaml
 ```
 
 We can double check the CRDs beeing created with `kubectl get crds` and filter them using `grep` to our group name `crossplane.jonashackt.io`:
@@ -420,7 +420,7 @@ The main work in Crossplane has to be done crafting the Compositions. This is be
 
 Detailled docs to many of the possible manifest configurations can be found here https://crossplane.io/docs/v1.8/reference/composition.html#compositions
 
-A Composite to manage an S3 Bucket in AWS with public access for static website hosting could for example look like this [aws/s3/composition.yaml](aws/s3/composition.yaml):
+A Composite to manage an S3 Bucket in AWS with public access for static website hosting could for example look like this [provider-aws-crossplane-contrib/s3/composition.yaml](provider-aws-crossplane-contrib/s3/composition.yaml):
 
 ```yaml
 ---
@@ -482,7 +482,7 @@ spec:
 Install our Composition with 
 
 ```shell
-kubectl apply -f aws/s3/composition.yaml
+kubectl apply -f provider-aws-crossplane-contrib/s3/composition.yaml
 ```
 
 
@@ -493,7 +493,7 @@ Crossplane could look quite intimidating when having a first look. There are few
 
 https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
 
-Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](aws/s3/claim.yaml):
+Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](provider-aws-crossplane-contrib/s3/claim.yaml):
 
 ```yaml
 ---
@@ -521,7 +521,7 @@ spec:
 Testdrive with:
 
 ```shell
-kubectl apply -f aws/s3/claim.yaml
+kubectl apply -f provider-aws-crossplane-contrib/s3/claim.yaml
 ```
 
 When somthing goes wrong with the validation, this could look like this:
@@ -822,7 +822,7 @@ https://doc.crds.dev/github.com/crossplane/provider-azure/azure.crossplane.io/Re
 
 ### Defining a CompositeResourceDefinition (XRD) for our Storage Account
 
-So our Composite Resource Definition (XRD) for our Storage Account could look like [azure/storageaccount/definition.yaml](azure/storageaccount/definition.yaml):
+So our Composite Resource Definition (XRD) for our Storage Account could look like [provider-azure-crossplane-contrib/storageaccount/definition.yaml](provider-azure-crossplane-contrib/storageaccount/definition.yaml):
 
 ```yaml
 ---
@@ -872,7 +872,7 @@ spec:
 Install the XRD into our cluster with:
 
 ```shell
-kubectl apply -f azure/storageaccount/definition.yaml
+kubectl apply -f provider-azure-crossplane-contrib/storageaccount/definition.yaml
 ```
 
 Let's wait for the XRD to become `Offered`:
@@ -884,7 +884,7 @@ kubectl wait --for=condition=Offered --timeout=120s xrd xstoragesazure.crossplan
 
 ### Craft a Composition to manage our needed cloud resources
 
-A Composite to manage an Storage Account in Azure with public access for static website hosting could for example look like this [azure/storageaccount/composition.yaml](azure/storageaccount/composition.yaml):
+A Composite to manage an Storage Account in Azure with public access for static website hosting could for example look like this [provider-azure-crossplane-contrib/storageaccount/composition.yaml](provider-azure-crossplane-contrib/storageaccount/composition.yaml):
 
 ```yaml
 ---
@@ -939,14 +939,14 @@ spec:
 Install our Composition with 
 
 ```shell
-kubectl apply -f azure/storageaccount/composition.yaml
+kubectl apply -f provider-azure-crossplane-contrib/storageaccount/composition.yaml
 ```
 
 
 
 ### Craft a Composite Resource (XR) or Claim (XRC)
 
-Since we want to create a Storage Account, here's an suggestion for an [claim.yaml](azure/storageaccount/claim.yaml):
+Since we want to create a Storage Account, here's an suggestion for an [claim.yaml](provider-azure-crossplane-contrib/storageaccount/claim.yaml):
 
 ```yaml
 ---
@@ -968,7 +968,7 @@ spec:
 Testdrive with 
 
 ```shell
-kubectl apply -f azure/storageaccount/claim.yaml
+kubectl apply -f provider-azure-crossplane-contrib/storageaccount/claim.yaml
 ```
 
 Now have a look into the Azure Portal. Our Resource Group should show up:
@@ -1047,7 +1047,7 @@ Therefore we need a `crossplane.yaml` file as described in https://crossplane.io
 
 See also https://crossplane.io/docs/v1.8/concepts/packages.html#configuration-packages
 
-Our [aws/s3/crossplane.yaml](aws/s3/crossplane.yaml) is of `kind: Configuration` and defines the minimum crossplane version needed alongside the crossplane AWS provider:
+Our [provider-aws-crossplane-contrib/s3/crossplane.yaml](provider-aws-crossplane-contrib/s3/crossplane.yaml) is of `kind: Configuration` and defines the minimum crossplane version needed alongside the crossplane AWS provider:
 
 ```yaml
 apiVersion: meta.pkg.crossplane.io/v1
@@ -1075,7 +1075,7 @@ Really strange, getting
 
 ```shell
 kubectl crossplane build configuration
-kubectl crossplane: error: failed to build package: failed to parse package: {path:/Users/jonashecht/dev/kubernetes/crossplane-kind-eks/aws/s3/composition.yaml position:0}: no kind "S3Bucket" is registered for version "crossplane.jonashackt.io/v1alpha1" in scheme "/home/runner/work/crossplane/crossplane/internal/xpkg/scheme.go:47"
+kubectl crossplane: error: failed to build package: failed to parse package: {path:/Users/jonashecht/dev/kubernetes/crossplane-awws-azure/provider-aws-crossplane-contrib/s3/composition.yaml position:0}: no kind "S3Bucket" is registered for version "crossplane.jonashackt.io/v1alpha1" in scheme "/home/runner/work/crossplane/crossplane/internal/xpkg/scheme.go:47"
 ```
 
 
