@@ -6,5 +6,8 @@
   "automergeType": "branch",
   "major": {
     "automerge": false
+  },
+  "kubernetes": {
+    "fileMatch": ["\\.yaml$"]
   }
 }
