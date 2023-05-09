@@ -76,7 +76,7 @@ jobs:
           kubectl get provider.pkg.crossplane.io
 
           echo "### Wait until AWS Provider is up and running"
-          kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
+          kubectl wait --for=condition=healthy --timeout=180s provider/provider-aws
 
           echo "### Create ProviderConfig to consume the Secret containing AWS credentials"
           kubectl apply -f provider-aws-upbound/config/provider-config-aws.yaml
