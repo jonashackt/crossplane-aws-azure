@@ -1067,11 +1067,78 @@ If we now integrate the offical AWS provider also https://github.com/upbound/pro
 │       └── definition.yaml
 ```
 
+Now before configuring the Upbound Provider, be sure to have the `aws-creds.conf` file in place and the provider secret created (as described in [Create aws-creds.conf file](#create-aws-credsconf-file) & [Create AWS Provider secret](#create-aws-provider-secret)):
+
+```shell
+kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
+```
+
+With the secret in place we can install the Upbound AWS Provider. Therefore the [provider-aws-upbound/config/provider-aws.yaml](provider-aws-upbound/config/provider-aws.yaml) looks only slightly different compared to the classic AWS Provider - only the `spec.package` changed:
+
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws:v0.34.0
+  packagePullPolicy: Always
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+```
+
+Install it via `kubectl`:
 
 
+```shell
+kubectl apply -f provider-aws-upbound/config/provider-aws.yaml
+```
+
+We need to wait for the Provider to become healthy as we're already used to from the classic providers:
+
+```shell
+kubectl wait "providers.pkg.crossplane.io/provider-aws" --for=condition=Healthy --timeout=180s
+```
+
+To get our Provider finally working we also need to create a `ProviderConfig` accordingly. We need to adjust the `apiVersion` in our [provider-aws-upbound/config/provider-config-aws.yaml](provider-aws-upbound/config/provider-config-aws.yaml):
+
+```yaml
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-creds
+      key: creds
+```
+
+Apply it via `kubectl`:
 
 
+```shell
+kubectl apply -f provider-aws-upbound/config/provider-config-aws.yaml
+```
 
+Now we should have everything in place to use the Upbound AWS Provider! We can double check via `kubectl get crossplane`:
+
+```shell
+$ kubectl get crossplane
+NAME                                    AGE
+providerconfig.aws.upbound.io/default   55s
+
+NAME                                                           HEALTHY   REVISION   IMAGE                                          STATE    DEP-FOUND   DEP-INSTALLED   AGE
+providerrevision.pkg.crossplane.io/provider-aws-6acd9324f315   True      1          xpkg.upbound.io/upbound/provider-aws:v0.34.0   Active                               17m
+
+NAME                                      INSTALLED   HEALTHY   PACKAGE                                        AGE
+provider.pkg.crossplane.io/provider-aws   True        True      xpkg.upbound.io/upbound/provider-aws:v0.34.0   18m
+
+NAME                                        AGE   TYPE         DEFAULT-SCOPE
+storeconfig.secrets.crossplane.io/default   22h   Kubernetes   crossplane-system
+```
 
 
 
