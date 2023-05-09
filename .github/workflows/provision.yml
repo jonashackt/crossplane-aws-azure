@@ -136,7 +136,7 @@ jobs:
           kubectl get crossplane 
 
           echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=120s claim managed-upbound-s3
+          kubectl wait --for=condition=ready --timeout=240s claim managed-upbound-s3
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
