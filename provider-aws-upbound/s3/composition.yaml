@@ -63,10 +63,8 @@ spec:
             - type: string
               string:
                 fmt: "%s-pab"
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "spec.forProvider.bucketRef.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
+        - type: PatchSet
+          patchSetName: bucketNameAndRegionPatchSet
 
     - name: bucketownershipcontrols
       base:
@@ -85,10 +83,8 @@ spec:
             - type: string
               string:
                 fmt: "%s-osc"
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "spec.forProvider.bucketRef.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
+        - type: PatchSet
+          patchSetName: bucketNameAndRegionPatchSet
 
     - name: bucketacl
       base:
@@ -106,10 +102,8 @@ spec:
             - type: string
               string:
                 fmt: "%s-acl"
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "spec.forProvider.bucketRef.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
+        - type: PatchSet
+          patchSetName: bucketNameAndRegionPatchSet
   
     - name: bucketwebsiteconfiguration
       base:
@@ -128,11 +122,16 @@ spec:
             - type: string
               string:
                 fmt: "%s-websiteconf"
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "spec.forProvider.bucketRef.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
+        - type: PatchSet
+          patchSetName: bucketNameAndRegionPatchSet
 
   # If you find yourself repeating patches a lot you can group them as a named
   # 'patch set' then use a PatchSet type patch to reference them.
-  #patchSets:
+  # see https://docs.crossplane.io/v1.12/concepts/composition/#compositions
+  patchSets:
+  - name: bucketNameAndRegionPatchSet
+    patches:
+    - fromFieldPath: "spec.parameters.bucketName"
+      toFieldPath: "spec.forProvider.bucketRef.name"
+    - fromFieldPath: "spec.parameters.region"
+      toFieldPath: "spec.forProvider.region"
