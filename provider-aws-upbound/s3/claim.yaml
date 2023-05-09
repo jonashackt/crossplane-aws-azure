@@ -20,4 +20,5 @@ spec:
     bucketAclName: devopsthde-bucket-acl
     bucketPABName: devopsthde-bucket-pab
     bucketOSCName: devopsthde-bucket-osc
+    bucketWebConfName: devopsthde-bucket-webconf
     region: eu-central-1

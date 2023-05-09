@@ -1263,6 +1263,7 @@ Inside our Claim [provider-aws-upbound/s3/claim.yaml](provider-aws-upbound/s3/cl
     bucketAclName: devopsthde-bucket-acl
     bucketPABName: devopsthde-bucket-pab
     bucketOSCName: devopsthde-bucket-osc
+    bucketWebConfName: devopsthde-bucket-webconf
     region: eu-central-1
 
 ```
@@ -1298,6 +1299,8 @@ Therefore we need to enhance our Composite Resource Definition (XRD) [provider-a
                     type: string
                   bucketOSCName:
                     type: string
+                  bucketWebConfName:
+                    type: string
                   region:
                     type: string
                 required:
@@ -1305,6 +1308,7 @@ Therefore we need to enhance our Composite Resource Definition (XRD) [provider-a
                   - bucketAclName
                   - bucketPABName
                   - bucketOSCName
+                  - bucketWebConfName
                   - region
 ```
 

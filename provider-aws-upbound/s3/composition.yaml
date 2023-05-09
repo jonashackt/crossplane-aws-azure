@@ -34,10 +34,6 @@ spec:
         kind: Bucket
         metadata: {}
         spec:
-          forProvider:
-            websiteConfiguration:
-              indexDocument: 
-                suffix: "index.html"
           deletionPolicy: Delete
       
       patches:
@@ -101,6 +97,24 @@ spec:
         - fromFieldPath: "spec.parameters.region"
           toFieldPath: "spec.forProvider.region"
   
+    - name: bucketwebsiteconfiguration
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketWebsiteConfiguration/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketWebsiteConfiguration
+        spec:
+          forProvider:
+            indexDocument:
+              - suffix: index.html
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketWebConfName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
   # If you find yourself repeating patches a lot you can group them as a named
   # 'patch set' then use a PatchSet type patch to reference them.
   #patchSets:
