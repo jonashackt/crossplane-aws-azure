@@ -45,20 +45,8 @@ spec:
                 properties:
                   bucketName:
                     type: string
-                  bucketAclName:
-                    type: string
-                  bucketPABName:
-                    type: string
-                  bucketOSCName:
-                    type: string
-                  bucketWebConfName:
-                    type: string
                   region:
                     type: string
                 required:
                   - bucketName
-                  - bucketAclName
-                  - bucketPABName
-                  - bucketOSCName
-                  - bucketWebConfName
                   - region

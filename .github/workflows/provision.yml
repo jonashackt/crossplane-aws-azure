@@ -4,6 +4,7 @@ on: [push]
 
 env:
   KIND_NODE_VERSION: v1.27.1
+  BUCKET_NAME: devopsthde-bucket
   # AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -140,18 +141,18 @@ jobs:
       - name: AWS -> Upload index.html to S3 and check deployment works
         run: |
           echo "### Upload index.html to Bucket via AWS CLI"
-          aws s3 sync static s3://microservice-ui-nuxt-js-static-bucket2 --acl public-read
+          aws s3 sync static "s3://$BUCKET_NAME" --acl public-read
 
-          echo "### Access S3 Bucket static webseite"
-          curl http://microservice-ui-nuxt-js-static-bucket2.s3-website.eu-central-1.amazonaws.com
+          echo "### Access S3 Bucket static website"
+          curl "http://$BUCKET_NAME.s3-website.eu-central-1.amazonaws.com"
 
       - name: AWS -> Delete index.html and remove Claim for S3 Bucket deletion
         run: |
           echo "### Delete index.html from S3 Bucket"
-          aws s3 rm s3://microservice-ui-nuxt-js-static-bucket2/index.html
+          aws s3 rm "s3://$BUCKET_NAME/index.html"
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
-          kubectl delete claim managed-s3
+          kubectl delete -f provider-aws-upbound/s3/claim.yaml
 
       - name: Azure -> Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
         run: |
