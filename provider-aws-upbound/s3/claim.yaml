@@ -6,7 +6,7 @@ kind: ObjectStorage
 metadata:
   # Only claims are namespaced, unlike XRs.
   namespace: default
-  name: managed-s3
+  name: managed-upbound-s3
 spec:
   # The compositionRef specifies which Composition this XR will use to compose
   # resources when it is created, updated, or deleted.
@@ -16,5 +16,8 @@ spec:
   # Parameters for the Composition to provide the Managed Resources (MR) with
   # to create the actual infrastructure components
   parameters:
-    bucketName: microservice-ui-nuxt-js-static-bucket2
+    bucketName: devopsthde-bucket
+    bucketAclName: devopsthde-bucket-acl
+    bucketPABName: devopsthde-bucket-pab
+    bucketOSCName: devopsthde-bucket-osc
     region: eu-central-1

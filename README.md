@@ -1018,22 +1018,6 @@ So let's use the provider inside our project!
 
 
 
-https://github.com/hashicorp/terraform-provider-aws/issues/28353
-
-https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl
-
-https://github.com/aws/aws-cdk/issues/25288#issuecomment-1522011311
-
-https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.39.0
-
-https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-policy-language-overview.html
-
-https://stackoverflow.com/questions/76097031/aws-s3-bucket-cannot-have-acls-set-with-objectownerships-bucketownerenforced-s 
-
-https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1 
-
-
-
 ## Using the official Upjet generated AWS Provider
 
 If we now integrate the offical AWS provider also https://github.com/upbound/provider-aws, we need to restructure our repo folders. As everything in crossplane is related to providers, these should be the top level directories. So the `crossplane-config` folder is gone, since we always configure a specific provider:
@@ -1139,6 +1123,215 @@ provider.pkg.crossplane.io/provider-aws   True        True      xpkg.upbound.io/
 NAME                                        AGE   TYPE         DEFAULT-SCOPE
 storeconfig.secrets.crossplane.io/default   22h   Kubernetes   crossplane-system
 ```
+
+
+
+## Rebuilding the S3 Composition to get our Bucket working again after 04.25.2023
+
+https://github.com/aws/aws-cdk/issues/25288#issuecomment-1522011311
+
+https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.39.0
+
+https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-policy-language-overview.html
+
+https://stackoverflow.com/questions/76097031/aws-s3-bucket-cannot-have-acls-set-with-objectownerships-bucketownerenforced-s 
+
+https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1 
+
+
+
+
+According to https://github.com/hashicorp/terraform-provider-aws/issues/28353 and https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl we need to separate `Bucket` creation from `BucketPublicAccessBlock`, `BucketOwnershipControls` and `BucketACL` - which should now be available finally leveraging the Upbound AWS Provider:
+
+```yaml
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: objectstorage-composition
+  labels:
+    # An optional convention is to include a label of the XRD. This allows
+    # easy discovery of compatible Compositions.
+    crossplane.io/xrd: xobjectstorages.crossplane.jonashackt.io
+    # The following label marks this Composition for AWS. This label can 
+    # be used in 'compositionSelector' in an XR or Claim.
+    provider: aws
+spec:
+  # Each Composition must declare that it is compatible with a particular type
+  # of Composite Resource using its 'compositeTypeRef' field. The referenced
+  # version must be marked 'referenceable' in the XRD that defines the XR.
+  compositeTypeRef:
+    apiVersion: crossplane.jonashackt.io/v1alpha1
+    kind: XObjectStorage
+  
+  # When an XR is created in response to a claim Crossplane needs to know where
+  # it should create the XR's connection secret. This is configured using the
+  # 'writeConnectionSecretsToNamespace' field.
+  writeConnectionSecretsToNamespace: crossplane-system
+  
+  # Each Composition must specify at least one composed resource template.
+  resources:
+    # Providing a unique name for each entry is good practice.
+    # Only identifies the resources entry within the Composition. Required in future crossplane API versions.
+    - name: bucket
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/Bucket/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: Bucket
+        metadata: {}
+        spec:
+          forProvider:
+            websiteConfiguration:
+              indexDocument: 
+                suffix: "index.html"
+          deletionPolicy: Delete
+      
+      patches:
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
+    - name: bucketpublicaccessblock
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketPublicAccessBlock
+        spec:
+          forProvider:
+            blockPublicAcls: false
+            blockPublicPolicy: false
+            ignorePublicAcls: false
+            restrictPublicBuckets: false
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketPABName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
+    - name: bucketownershipcontrols
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketOwnershipControls/v1beta1#doc:spec-forProvider-rule-objectOwnership
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketOwnershipControls
+        spec:
+          forProvider:
+            rule:
+              - objectOwnership: BucketOwnerPreferred
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketOSCName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
+    - name: bucketacl
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketACL/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketACL
+        spec:
+          forProvider:
+            acl: "public-read"
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketAclName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+  
+  # If you find yourself repeating patches a lot you can group them as a named
+  # 'patch set' then use a PatchSet type patch to reference them.
+  #patchSets:
+```
+
+Inside our Claim [provider-aws-upbound/s3/claim.yaml](provider-aws-upbound/s3/claim.yaml) we now need to define 3 new parameters:
+
+```yaml
+...
+  # Parameters for the Composition to provide the Managed Resources (MR) with
+  # to create the actual infrastructure components
+  parameters:
+    bucketName: devopsthde-bucket
+    bucketAclName: devopsthde-bucket-acl
+    bucketPABName: devopsthde-bucket-pab
+    bucketOSCName: devopsthde-bucket-osc
+    region: eu-central-1
+
+```
+
+Therefore we need to enhance our Composite Resource Definition (XRD) [provider-aws-upbound/s3/definition.yaml](provider-aws-upbound/s3/definition.yaml):
+
+```yaml
+...
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    # OpenAPI schema (like the one used by Kubernetes CRDs). Determines what fields
+    # the XR (and claim) will have. Will be automatically extended by crossplane.
+    # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
+    # for full CRD documentation and guide on how to write OpenAPI schemas
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            # We define all needed parameters here one has to provide as XR or Claim spec.parameters
+            properties:
+              parameters:
+                type: object
+                properties:
+                  bucketName:
+                    type: string
+                  bucketAclName:
+                    type: string
+                  bucketPABName:
+                    type: string
+                  bucketOSCName:
+                    type: string
+                  region:
+                    type: string
+                required:
+                  - bucketName
+                  - bucketAclName
+                  - bucketPABName
+                  - bucketOSCName
+                  - region
+```
+
+Let's finally create our XRD, Composition and Claim using the Upbound AWS Provider:
+
+```shell
+echo "### Create CompositeResourceDefinition (XRD)"
+kubectl apply -f provider-aws-upbound/s3/definition.yaml
+kubectl get xrd
+
+echo "### Wait for XRD to become Offered"
+kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
+
+echo "### Create Composition"
+kubectl apply -f provider-aws-upbound/s3/composition.yaml
+
+echo "### Create Claim, which should create S3 Bucket"
+kubectl apply -f provider-aws-upbound/s3/claim.yaml
+
+echo "### Wait until Claim & XR (Composite) are ready"
+kubectl wait --for=condition=ready --timeout=120s claim managed-upbound-s3 
+
+echo "### Show crossplane overall status"
+kubectl get crossplane 
+```
+
+
 
 
 

@@ -46,8 +46,8 @@ jobs:
           kubectl create namespace crossplane-system
 
           echo "### Install crossplane via Helm"
-          helm dependency update crossplane-config/install
-          helm upgrade --install crossplane --namespace crossplane-system crossplane-config/install
+          helm dependency update crossplane-install
+          helm upgrade --install crossplane --namespace crossplane-system crossplane-install
 
       - name: Check crossplane status
         run: |
@@ -58,7 +58,7 @@ jobs:
 
           kubectl get all -n crossplane-system
       
-      - name: Configure crossplane to access AWS
+      - name: Configure crossplane to access AWS (now using Upbound AWS Provider)
         run: |
           echo "### Create aws-creds.conf file"
           echo "[default]
@@ -70,7 +70,7 @@ jobs:
           kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
 
           echo "### Install the crossplane AWS Provider"
-          kubectl apply -f crossplane-config/provider-aws.yaml
+          kubectl apply -f provider-aws-upbound/config/provider-aws.yaml
 
           kubectl get provider.pkg.crossplane.io
 
@@ -78,7 +78,7 @@ jobs:
           kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
 
           echo "### Create ProviderConfig to consume the Secret containing AWS credentials"
-          kubectl apply -f crossplane-config/provider-config-aws.yaml
+          kubectl apply -f provider-aws-upbound/config/provider-config-aws.yaml
 
           echo "### Get overall provider status"
           kubectl get provider
@@ -103,7 +103,7 @@ jobs:
           kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
 
           echo "### Install the crossplane Azure Provider"
-          kubectl apply -f crossplane-config/provider-azure.yaml
+          kubectl apply -f provider-azure-crossplane-contrib/config/provider-azure.yaml
 
           kubectl get provider.pkg.crossplane.io
 
@@ -111,28 +111,28 @@ jobs:
           kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
 
           echo "### Create ProviderConfig to consume the Secret containing Azure credentials"
-          kubectl apply -f crossplane-config/provider-config-azure.yaml
+          kubectl apply -f provider-azure-crossplane-contrib/config/provider-config-azure.yaml
 
           echo "### Get overall provider status"
           kubectl get provider
 
-      - name: AWS -> Create XRD, Composite & Claim to create S3 Bucket
+      - name: AWS -> Create XRD, Composition & Claim to create S3 Bucket (now using Upbound AWS Provider)
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
-          kubectl apply -f provider-aws-crossplane-contrib/s3/definition.yaml
+          kubectl apply -f provider-aws-upbound/s3/definition.yaml
           kubectl get xrd
           
           echo "### Wait for XRD to become Offered"
           kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 
           echo "### Create Composition"
-          kubectl apply -f provider-aws-crossplane-contrib/s3/composition.yaml
+          kubectl apply -f provider-aws-upbound/s3/composition.yaml
 
           echo "### Create Claim, which should create S3 Bucket"
-          kubectl apply -f provider-aws-crossplane-contrib/s3/claim.yaml
+          kubectl apply -f provider-aws-upbound/s3/claim.yaml
 
           echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=120s claim managed-s3  
+          kubectl wait --for=condition=ready --timeout=120s claim managed-upbound-s3
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
