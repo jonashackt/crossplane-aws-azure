@@ -51,6 +51,8 @@ spec:
                     type: string
                   bucketOSCName:
                     type: string
+                  bucketWebConfName:
+                    type: string
                   region:
                     type: string
                 required:
@@ -58,4 +60,5 @@ spec:
                   - bucketAclName
                   - bucketPABName
                   - bucketOSCName
+                  - bucketWebConfName
                   - region
