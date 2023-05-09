@@ -100,7 +100,7 @@ jobs:
             \"managementEndpointUrl\": \"https://management.core.windows.net/\"
           }" > crossplane-azure-provider-key.json
           
-          echo "### Create AWS Provider secret"
+          echo "### Create Azure Provider secret"
           kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
 
           echo "### Install the crossplane Azure Provider"
@@ -131,6 +131,10 @@ jobs:
 
           echo "### Create Claim, which should create S3 Bucket"
           kubectl apply -f provider-aws-upbound/s3/claim.yaml
+
+          echo "### Show some debug info"
+          kubectl get crossplane 
+          kubectl describe bucket.s3.aws.upbound.io/devopsthde-bucket
 
           echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s claim managed-upbound-s3
