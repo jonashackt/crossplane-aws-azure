@@ -55,8 +55,14 @@ spec:
             restrictPublicBuckets: false
 
       patches:
-        - fromFieldPath: "spec.parameters.bucketPABName"
+        # use the bucketName parameter to create a derived bucketname-pab
+        # see https://docs.crossplane.io/v1.12/concepts/composition/#patch-types
+        - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "metadata.name"
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-pab"
         - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "spec.forProvider.bucketRef.name"
         - fromFieldPath: "spec.parameters.region"
@@ -70,11 +76,15 @@ spec:
         spec:
           forProvider:
             rule:
-              - objectOwnership: BucketOwnerPreferred
+              - objectOwnership: ObjectWriter
 
       patches:
-        - fromFieldPath: "spec.parameters.bucketOSCName"
+        - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "metadata.name"
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-osc"
         - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "spec.forProvider.bucketRef.name"
         - fromFieldPath: "spec.parameters.region"
@@ -90,8 +100,12 @@ spec:
             acl: "public-read"
 
       patches:
-        - fromFieldPath: "spec.parameters.bucketAclName"
+        - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "metadata.name"
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-acl"
         - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "spec.forProvider.bucketRef.name"
         - fromFieldPath: "spec.parameters.region"
@@ -108,8 +122,12 @@ spec:
               - suffix: index.html
 
       patches:
-        - fromFieldPath: "spec.parameters.bucketWebConfName"
+        - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "metadata.name"
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-websiteconf"
         - fromFieldPath: "spec.parameters.bucketName"
           toFieldPath: "spec.forProvider.bucketRef.name"
         - fromFieldPath: "spec.parameters.region"

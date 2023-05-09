@@ -1180,10 +1180,6 @@ spec:
         kind: Bucket
         metadata: {}
         spec:
-          forProvider:
-            websiteConfiguration:
-              indexDocument: 
-                suffix: "index.html"
           deletionPolicy: Delete
       
       patches:
@@ -1220,7 +1216,7 @@ spec:
         spec:
           forProvider:
             rule:
-              - objectOwnership: BucketOwnerPreferred
+              - objectOwnership: ObjectWriter
 
       patches:
         - fromFieldPath: "spec.parameters.bucketOSCName"
@@ -1247,94 +1243,63 @@ spec:
         - fromFieldPath: "spec.parameters.region"
           toFieldPath: "spec.forProvider.region"
   
+    - name: bucketwebsiteconfiguration
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketWebsiteConfiguration/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketWebsiteConfiguration
+        spec:
+          forProvider:
+            indexDocument:
+              - suffix: index.html
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketWebConfName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
   # If you find yourself repeating patches a lot you can group them as a named
   # 'patch set' then use a PatchSet type patch to reference them.
   #patchSets:
 ```
 
-Inside our Claim [provider-aws-upbound/s3/claim.yaml](provider-aws-upbound/s3/claim.yaml) we now need to define 3 new parameters:
-
-```yaml
-...
-  # Parameters for the Composition to provide the Managed Resources (MR) with
-  # to create the actual infrastructure components
-  parameters:
-    bucketName: devopsthde-bucket
-    bucketAclName: devopsthde-bucket-acl
-    bucketPABName: devopsthde-bucket-pab
-    bucketOSCName: devopsthde-bucket-osc
-    bucketWebConfName: devopsthde-bucket-webconf
-    region: eu-central-1
-
-```
-
-Therefore we need to enhance our Composite Resource Definition (XRD) [provider-aws-upbound/s3/definition.yaml](provider-aws-upbound/s3/definition.yaml):
-
-```yaml
-...
-  versions:
-  - name: v1alpha1
-    served: true
-    referenceable: true
-    # OpenAPI schema (like the one used by Kubernetes CRDs). Determines what fields
-    # the XR (and claim) will have. Will be automatically extended by crossplane.
-    # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
-    # for full CRD documentation and guide on how to write OpenAPI schemas
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-            # We define all needed parameters here one has to provide as XR or Claim spec.parameters
-            properties:
-              parameters:
-                type: object
-                properties:
-                  bucketName:
-                    type: string
-                  bucketAclName:
-                    type: string
-                  bucketPABName:
-                    type: string
-                  bucketOSCName:
-                    type: string
-                  bucketWebConfName:
-                    type: string
-                  region:
-                    type: string
-                required:
-                  - bucketName
-                  - bucketAclName
-                  - bucketPABName
-                  - bucketOSCName
-                  - bucketWebConfName
-                  - region
-```
 
 Let's finally create our XRD, Composition and Claim using the Upbound AWS Provider:
 
 ```shell
-echo "### Create CompositeResourceDefinition (XRD)"
 kubectl apply -f provider-aws-upbound/s3/definition.yaml
 kubectl get xrd
 
-echo "### Wait for XRD to become Offered"
 kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 
-echo "### Create Composition"
 kubectl apply -f provider-aws-upbound/s3/composition.yaml
 
-echo "### Create Claim, which should create S3 Bucket"
 kubectl apply -f provider-aws-upbound/s3/claim.yaml
 
-echo "### Wait until Claim & XR (Composite) are ready"
 kubectl wait --for=condition=ready --timeout=120s claim managed-upbound-s3 
 
-echo "### Show crossplane overall status"
 kubectl get crossplane 
 ```
 
+
+## Access our Bucket
+
+If we want to get really fancy, we can also upload our []() again like with the classic crossplane provider:
+
+```shell
+aws s3 sync static s3://devopsthde-bucket --acl public-read
+```
+
+And don't forget to remove everything in the end:
+
+```shell
+aws s3 rm s3://devopsthde-bucket/index.html
+
+kubectl delete -f provider-aws-upbound/s3/claim.yaml
+```
 
 
 
