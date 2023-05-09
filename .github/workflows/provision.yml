@@ -135,8 +135,8 @@ jobs:
           echo "### Show some debug info"
           kubectl get crossplane 
 
-          echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=240s claim managed-upbound-s3
+          echo "### Wait until Claim & XR (Composite) are ready (giving it 6mins, since resources consumption of the AWS Upbound provider seems to be way higher than the classic one)"
+          kubectl wait --for=condition=ready --timeout=360s claim managed-upbound-s3
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
