@@ -22,29 +22,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@master
 
-      - uses: actions/setup-go@v4
-        with:
-          go-version: 1.13
-
-      - name: Install latest version of Kind (see https://github.com/kind-ci/examples/blob/master/.github/workflows/kind.yml)
+      - name: Install kind (see https://kind.sigs.k8s.io) & crossplane CLI
         run: |
-          GO111MODULE=on go get sigs.k8s.io/kind
+          echo "### Add homebrew to path as described in https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2004-Readme.md#notes"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-      - name: Spin up kind cluster & try to use the cluster
-        run: |
-          echo "### Let's install kind like they themselves use it (directly via go, not brew)"
-          PATH=$(go env GOPATH)/bin:$PATH kind create cluster --image "kindest/node:$KIND_NODE_VERSION" --wait 5m
+          brew install kind
 
-          echo "### Let's try to access our kind cluster via kubectl"
-          kubectl get nodes
-
-      - name: Install crossplane CLI
-        run: |
           echo "### Install crossplane CLI & check if it's working"
           curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
           sudo mv kubectl-crossplane /usr/local/bin
           kubectl crossplane --help
 
+      - name: Spin up kind cluster & try to use the cluster
+        run: |
+          kind create cluster --image "kindest/node:$KIND_NODE_VERSION" --wait 5m
+
+          echo "### Let's try to access our kind cluster via kubectl"
+          kubectl get nodes
+      
       - name: Install crossplane via Helm
         run: |
           echo "### Create a namespace for crossplane"
