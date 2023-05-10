@@ -1,5 +1,6 @@
 # crossplane-aws-azure
-[![Build Status](https://github.com/jonashackt/crossplane-aws-azure/workflows/provision/badge.svg)](https://github.com/jonashackt/crossplane-aws-azure/actions)
+[![Build Status AWS](https://github.com/jonashackt/crossplane-aws-azure/workflows/provision-aws/badge.svg)](https://github.com/jonashackt/crossplane-aws-azure/actions/workflows/provision-aws.yml)
+[![Build Status Azure](https://github.com/jonashackt/crossplane-aws-azure/workflows/provision-azure/badge.svg)](https://github.com/jonashackt/crossplane-aws-azure/actions/workflows/provision-azure.yml)
 [![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-aws-azure/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
