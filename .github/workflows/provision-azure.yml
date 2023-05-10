@@ -12,7 +12,7 @@ env:
   ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
 jobs:
-  fireup-crossplane-and-provision-azure:
+  fireup-crossplane-provision-azure:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -83,7 +83,7 @@ jobs:
           echo "### Get overall provider status"
           kubectl get provider
 
-      - name: Azure -> Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
+      - name: Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
           kubectl apply -f provider-azure-crossplane-contrib/storageaccount/definition.yaml
@@ -104,8 +104,7 @@ jobs:
           echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane 
 
-      - name: Azure -> Delete Resources
+      - name: Delete Resources
         run: |
           echo "### Remove CompositeResourceClaim to delete Storage Account and Resource Group"
-          kubectl delete account.storage.azure.crossplane.io/account4c8672f 
-          kubectl delete resourcegroup.azure.crossplane.io/rg-crossplane
+          kubectl delete -f provider-azure-crossplane-contrib/storageaccount/claim.yaml

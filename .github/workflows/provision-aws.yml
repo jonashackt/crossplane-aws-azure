@@ -11,7 +11,7 @@ env:
   AWS_DEFAULT_REGION: 'eu-central-1'
 
 jobs:
-  fireup-crossplane-and-provision-aws:
+  fireup-crossplane-provision-aws:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -74,7 +74,7 @@ jobs:
           echo "### Get overall provider status"
           kubectl get provider
 
-      - name: AWS -> Create XRD, Composition & Claim to create S3 Bucket (now using Upbound AWS Provider)
+      - name: Create XRD, Composition & Claim to create S3 Bucket (now using Upbound AWS Provider)
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
           kubectl apply -f provider-aws-upbound/s3/definition.yaml
@@ -98,7 +98,7 @@ jobs:
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
-      - name: AWS -> Upload index.html to S3 and check deployment works
+      - name: Upload index.html to S3 and check deployment works
         run: |
           echo "### Upload index.html to Bucket via AWS CLI"
           aws s3 sync static "s3://$BUCKET_NAME" --acl public-read
@@ -106,10 +106,13 @@ jobs:
           echo "### Access S3 Bucket static website"
           curl "http://$BUCKET_NAME.s3-website.eu-central-1.amazonaws.com"
 
-      - name: AWS -> Delete index.html and remove Claim for S3 Bucket deletion
+      - name: Delete index.html and remove Claim for S3 Bucket deletion
         run: |
           echo "### Delete index.html from S3 Bucket"
           aws s3 rm "s3://$BUCKET_NAME/index.html"
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
           kubectl delete -f provider-aws-upbound/s3/claim.yaml
+
+          echo "### Give the deletion process some time by having a look into the crossplane status"
+          kubectl get crossplane 
