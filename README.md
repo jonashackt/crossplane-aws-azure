@@ -5,12 +5,15 @@
 
 Example project showing how to get started with Crossplane, connect it to multiple providers like AWS, Azure - and provision some resources like a S3Bucket or a StorageAccount through K8s CRDs
 
+> This repo is accompanied by this blog post https://blog.codecentric.de/en/2022/07/crossplane/
+
+Also it is used as an example in these two [iX Magazin](https://www.heise.de/ix/) issues (simply click on the magazine covers to access the full articles):
+
+[![](screenshots/ixmagazin_frontcover_02_2023.png)](https://www.codecentric.de/wissens-hub/fachmedien/crossplane-gitops-fuer-die-multi-cloud) [![](screenshots/ixmagazin_frontcover_03_2023.png)](https://www.codecentric.de/wissen/publikation/crossplane-provisionierung-in-aws-und-azure)
 
 Crossplane https://crossplane.io/ claims to be the "The cloud native control plane framework". It introduces a new way how to manage any cloud resource (beeing it Kubernetes-native or not). It's an alternative Infrastructure-as-Code tooling to Terraform, AWS CDK/Bicep or Pulumi and introduces a higher level of abstraction - based on Kubernetes CRDs. 
 
-> This repo is accompanied by this blog post https://blog.codecentric.de/en/2022/07/crossplane/
-
-Litterally the best intro post to Crossplane for me was https://blog.crossplane.io/crossplane-vs-cloud-infrastructure-addons/ - here the real key benefits especially compared to other tools are described. Without marketing blabla. If you love deep dives, I can also recommend Nate Reid's blog https://vrelevant.net/ who works as Staff Solutions Engineer at Upbound.
+Literally the best intro post to Crossplane for me was https://blog.crossplane.io/crossplane-vs-cloud-infrastructure-addons/ - here the real key benefits especially compared to other tools are described. Without marketing blabla. If you love deep dives, I can also recommend Nate Reid's blog https://vrelevant.net/ who works as Staff Solutions Engineer at Upbound.
 
 
 # Crossplane basic concepts
@@ -681,7 +684,7 @@ az ad sp create-for-rbac --sdk-auth --role Owner --scopes /subscriptions/$SUBSCR
 
 > Although this produces a waring message like `WARNING: Option '--sdk-auth' has been deprecated and will be removed in a future release.` we definitely need to use the `--sdk-auth` parameter. Otherwise our Managed Resources will run into errors like `connect failed: cannot get authorizer from client credentials config: failed to get SPT from client credentials: parameter 'activeDirectoryEndpoint' cannot be empty` because there are configuration entries missing in the file like `"activeDirectoryEndpointUrl": "https://login.microsoftonline.com",`.
 
-This produces a `crossplane-azure-provider-key.json` file you should never ever check into version control! For this repository I added `*-creds.conf` to the [.gitignore](.gitignore) file. 
+This produces a `crossplane-azure-provider-key.json` file you should never ever check into version control! For this repository I added it to the [.gitignore](.gitignore) file. 
 
 
 If you're using a CI system like GitHub Actions (as this repository is based on), define 3 repository secrets from the output. Choose the `appId` as the `ARM_CLIENT_ID`, the `password` as the `ARM_CLIENT_SECRET` and the `tenant` as the `ARM_TENANT_ID`. Additionally we need to define the `ARM_SUBSCRIPTION_ID` secret. Therefore run a `az account show` (after you logged your CLI into your Azure subscription via `azure login`) and use the value of `"id":`.
@@ -736,7 +739,7 @@ https://crossplane.io/docs/v1.8/concepts/packages.html#installing-a-package
 We can install crossplane Packages (which can be Providers or Configurations) via the Crossplane CLI with for example:
 
 ```shell
-kubectl crossplane install provider crossplane/provider-azure:v0.19.0
+kubectl crossplane install provider crossplane/provider-azure:v0.20.1
 ```
 
 Or we can create our own [provider-aws.yaml](provider-aws-crossplane-contrib/config/provider-aws.yaml) file like this:
