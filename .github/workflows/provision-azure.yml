@@ -1,4 +1,4 @@
-name: provision
+name: provision-azure
 
 on: [push]
 
@@ -12,7 +12,7 @@ env:
   ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
 jobs:
-  provision-kind-with-crossplane:
+  fireup-crossplane-and-provision-azure:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -90,7 +90,7 @@ jobs:
           kubectl get xrd
           
           echo "### Wait for XRD to become Offered"
-          kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
+          kubectl wait --for=condition=Offered --timeout=120s xrd xstoragesazure.crossplane.jonashackt.io  
 
           echo "### Create Composition"
           kubectl apply -f provider-azure-crossplane-contrib/storageaccount/composition.yaml

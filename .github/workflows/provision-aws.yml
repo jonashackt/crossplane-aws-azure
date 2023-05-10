@@ -1,4 +1,4 @@
-name: provision
+name: provision-aws
 
 on: [push]
 
@@ -11,7 +11,7 @@ env:
   AWS_DEFAULT_REGION: 'eu-central-1'
 
 jobs:
-  provision-kind-with-crossplane:
+  fireup-crossplane-and-provision-aws:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
