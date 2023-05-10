@@ -101,8 +101,11 @@ jobs:
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
+          echo "### Giving the Azure Provider some time to create the resources"
+          sleep 120s
+
           echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=240s account.storage.azure.crossplane.io/account4c8672f
+          kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane
 
       - name: Delete Resources
         run: |
