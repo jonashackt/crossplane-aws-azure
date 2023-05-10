@@ -1,0 +1,111 @@
+name: provision
+
+on: [push]
+
+env:
+  KIND_NODE_VERSION: v1.27.1
+  BUCKET_NAME: devopsthde-bucket
+  # Azure
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+jobs:
+  provision-kind-with-crossplane:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - name: Install & spin up kind via brew
+        run: |
+          echo "### Add homebrew to path as described in https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2004-Readme.md#notes"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+          echo "### Install kind via brew"
+          brew install kind
+
+          echo "### Create kind cluster"
+          kind create cluster --image "kindest/node:$KIND_NODE_VERSION" --wait 5m
+
+          echo "### Let's try to access our kind cluster via kubectl"
+          kubectl get nodes
+      
+      - name: Install crossplane via Helm
+        run: |
+          echo "### Create a namespace for crossplane"
+          kubectl create namespace crossplane-system
+
+          echo "### Install crossplane via Helm"
+          helm dependency update crossplane-install
+          helm upgrade --install crossplane --namespace crossplane-system crossplane-install
+
+      - name: Check crossplane status
+        run: |
+          helm list -n crossplane-system
+
+          echo "### Wait for crossplane to become ready before installing Providers"
+          kubectl wait --for=condition=ready pod -l app=crossplane --namespace crossplane-system --timeout=120s
+
+          kubectl get all -n crossplane-system
+
+      - name: Configure crossplane to access Azure
+        run: |
+          echo "### Create crossplane-azure-provider-key.json file"
+          echo "{
+            \"clientId\": \"$ARM_CLIENT_ID\",
+            \"clientSecret\": \"$ARM_CLIENT_SECRET\",
+            \"subscriptionId\": \"$ARM_SUBSCRIPTION_ID\",
+            \"tenantId\": \"$ARM_TENANT_ID\",
+            \"activeDirectoryEndpointUrl\": \"https://login.microsoftonline.com\",
+            \"resourceManagerEndpointUrl\": \"https://management.azure.com/\",
+            \"activeDirectoryGraphResourceId\": \"https://graph.windows.net/\",
+            \"sqlManagementEndpointUrl\": \"https://management.core.windows.net:8443/\",
+            \"galleryEndpointUrl\": \"https://gallery.azure.com/\",
+            \"managementEndpointUrl\": \"https://management.core.windows.net/\"
+          }" > crossplane-azure-provider-key.json
+          
+          echo "### Create Azure Provider secret"
+          kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
+
+          echo "### Install the crossplane Azure Provider"
+          kubectl apply -f provider-azure-crossplane-contrib/config/provider-azure.yaml
+
+          kubectl get provider.pkg.crossplane.io
+
+          echo "### Wait until Azure Provider is up and running"
+          kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
+
+          echo "### Create ProviderConfig to consume the Secret containing Azure credentials"
+          kubectl apply -f provider-azure-crossplane-contrib/config/provider-config-azure.yaml
+
+          echo "### Get overall provider status"
+          kubectl get provider
+
+      - name: Azure -> Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
+        run: |
+          echo "### Create CompositeResourceDefinition (XRD)"
+          kubectl apply -f provider-azure-crossplane-contrib/storageaccount/definition.yaml
+          kubectl get xrd
+          
+          echo "### Wait for XRD to become Offered"
+          kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
+
+          echo "### Create Composition"
+          kubectl apply -f provider-azure-crossplane-contrib/storageaccount/composition.yaml
+
+          echo "### Create Claim, which should create ResourceGroup & StorageAccount"
+          kubectl apply -f provider-azure-crossplane-contrib/storageaccount/claim.yaml
+
+          echo "### Show crossplane overall status"
+          kubectl get crossplane 
+
+          echo "### Wait until Claim & XR (Composite) are ready"
+          kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane 
+
+      - name: Azure -> Delete Resources
+        run: |
+          echo "### Remove CompositeResourceClaim to delete Storage Account and Resource Group"
+          kubectl delete account.storage.azure.crossplane.io/account4c8672f 
+          kubectl delete resourcegroup.azure.crossplane.io/rg-crossplane
