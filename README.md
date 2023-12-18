@@ -63,7 +63,7 @@ Now the `kubectl crossplane --help` command should be ready to use.
 Now spin up a local kind cluster
 
 ```shell
-kind create cluster --image kindest/node:v1.27.1 --wait 5m
+kind create cluster --image kindest/node:v1.29.0 --wait 5m
 ```
 
 
@@ -99,7 +99,7 @@ appVersion: 0.0.0 # unused
 dependencies:
   - name: crossplane
     repository: https://charts.crossplane.io/stable
-    version: 1.8.0
+    version: 1.14.4
 ```
 
 To install Crossplane using our own `Chart.yaml` simply run:
@@ -149,15 +149,34 @@ replicaset.apps/crossplane-7c88c45998                1         1         1      
 replicaset.apps/crossplane-rbac-manager-8466dfb7fc   1         1         1       69s
 ```
 
+Now we should be able to find some new Kubernetes API objects:
+
+```shell
+$ kubectl api-resources  | grep crossplane
+compositeresourcedefinitions               xrd,xrds     apiextensions.crossplane.io/v1         false        CompositeResourceDefinition
+compositionrevisions                       comprev      apiextensions.crossplane.io/v1         false        CompositionRevision
+compositions                               comp         apiextensions.crossplane.io/v1         false        Composition
+environmentconfigs                         envcfg       apiextensions.crossplane.io/v1alpha1   false        EnvironmentConfig
+usages                                                  apiextensions.crossplane.io/v1alpha1   false        Usage
+configurationrevisions                                  pkg.crossplane.io/v1                   false        ConfigurationRevision
+configurations                                          pkg.crossplane.io/v1                   false        Configuration
+controllerconfigs                                       pkg.crossplane.io/v1alpha1             false        ControllerConfig
+deploymentruntimeconfigs                                pkg.crossplane.io/v1beta1              false        DeploymentRuntimeConfig
+functionrevisions                                       pkg.crossplane.io/v1beta1              false        FunctionRevision
+functions                                               pkg.crossplane.io/v1beta1              false        Function
+locks                                                   pkg.crossplane.io/v1beta1              false        Lock
+providerrevisions                                       pkg.crossplane.io/v1                   false        ProviderRevision
+providers                                               pkg.crossplane.io/v1                   false        Provider
+storeconfigs                                            secrets.crossplane.io/v1alpha1         false        StoreConfig
+```
+
+
+
 
 
 # Configure Crossplane to access AWS
 
-https://crossplane.io/docs/v1.8/reference/configure.html
-
-https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html
-
-https://github.com/crossplane-contrib/provider-aws
+https://docs.crossplane.io/v1.14/getting-started/provider-aws/
 
 
 ### Create aws-creds.conf file
@@ -202,7 +221,34 @@ If everything went well there should be a new `aws-creds` Secret ready:
 
 
 
-### Install the Crossplane AWS Provider
+
+
+
+### Choosing a Crossplane AWS Provider
+
+Currently there are two crossplane providers for AWS:
+
+* https://github.com/crossplane-contrib/provider-aws
+* https://github.com/upbound/provider-aws
+
+This is quite confusing and is discussed e.g. here: https://github.com/crossplane-contrib/provider-aws/issues/1954 & there: https://blog.crossplane.io/charter-expansion-upjet-donation/
+
+
+The second provider, which is also called the Upbound "official" provider has been donated to the OpenSource community in September 2023 - so there are now 2 OpenSource providers for AWS. One is written by hand and supports around 193 Managed Resources and the other is generated using Upjet supporting the full AWS API with 924 Managed Resources. As Managed Resources are CRDs, the latter introduced a problem to most control planes, since Kubernetes wasn't designed for that amount of CRDs. I gave [a talk about crossplane at our local DevOps Meetup](https://www.meetup.com/de-DE/devopsthde/events/293211158/) and already struggled with the Upbound AWS provider.
+
+Since June 2023 things have gotten a even more confusing. Now the Upjet generated official Upbound provider has been split into Provider Families: https://blog.crossplane.io/crd-scaling-provider-families/ This means, that there is now a third flavour of crossplane AWS providers: The split up official providers:
+
+![](screenshots/provider-family-transition.png)
+
+The [migration guide](https://docs.upbound.io/providers/migration/) also states that the monolithic provider is already deprecated:
+
+> "Warning: The monolithic AWS provider (upbound/provider-aws) has been deprecated in favor of the AWS provider family. You can read more about the provider families in our blog post and the official documentation for the provider families is here. We will continue support for the monolithic AWS provider until June 12, 2024. https://marketplace.upbound.io/providers/upbound/provider-aws/"
+
+
+
+### Using the crossplanecontrib AWS Provider
+
+> This paragraph is deprecated since the project now focusses on the Upbound official provider (families)
 
 https://crossplane.io/docs/v1.8/concepts/packages.html#installing-a-package
 
@@ -260,6 +306,199 @@ kubectl wait --for=condition=healthy --timeout=120s provider/provider-aws
 ```
 
 Otherwise we may run into errors like this when applying the `ProviderConfig` right after the Provider.
+
+
+
+
+### The problem with Open Source Crossplane: Provider Coverage Problem
+
+See this blog post https://blog.upbound.io/first-official-providers/ and the paragraph `Provider Coverage Problem`:
+
+> The Crossplane community has been adding CustomResourceDefinitions (CRDs) to cover the API surface, but the pace is unable to catch up with users who are blocked from getting into production with Crossplane due to the lack of coverage. To give you an idea, AWS has ~1000 resources and the classic AWS provider has yet to cover ~200 as of writing.
+
+Now with the classic AWS provider https://marketplace.upbound.io/providers/crossplane-contrib/provider-aws/v0.39.0/crds you have around 180 CRDs available. If you only need the CRDs that are provided by this classic provider, everything is okay. But I recently stumbled upon a new security default implementation of AWS S3: https://github.com/jonashackt/crossplane-aws-azure/issues/12
+
+This project stopped to work, simply since AWS doesn't support Access Control Lists (ACLs) for all new S3 Buckets anymore. See https://github.com/hashicorp/terraform-provider-aws/issues/28353
+
+> Starting in April 2023, Amazon S3 will introduce two new default bucket security settings by automatically enabling S3 Block Public Access and disabling S3 access control lists (ACLs) for all new S3 buckets.
+
+This in fact means, that we not only need the `Bucket` CRD, but we additionally need `BucketACL`, `BucketPublicAccessBlock` and `BucketOwnershipControls`, which are only available in the so called official Upbound providers with their 901 CRDs: https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/crds
+
+
+Up until now I didn't really know the difference between the classic providers and the official providers. But the official providers are based on the tool Upjet https://github.com/upbound/upjet/ which is the successor of the former Terrajet https://github.com/crossplane/terrajet, where Terraform modules are used to generate Crossplane CRDs. With this approach, every API Terraform provides is also available in Crossplane. Upjet is currently used to generate all CRDs for the official AWS, Azure and GCP providers.
+
+And with Upjet it's possible to generate really any Crossplane provider from Terraform, meaning one can rely on every Provider Terraform already has: https://registry.terraform.io/browse/providers
+
+Why not use Terraform then you may ask. Theres a good post here https://blog.crossplane.io/crossplane-vs-terraform/ which makes the point, that Terraform can only be used from a bash script - but Crossplane delivers a control plane based approach, which continously reconciles all infrastructure configured inside of it.
+
+So TLDR: To fix the error https://github.com/jonashackt/crossplane-aws-azure/issues/12
+
+```shell
+S3 creation error: CannotCreateExternalResource managed/bucket.s3.aws.crossplane.io failed to create the Bucket: InvalidBucketAclWithObjectOwnership: Bucket cannot have ACLs set with ObjectOwnership's BucketOwnerEnforced setting
+```
+
+we need to switch over to the official AWS provider based on Upjet. Do we need to use the UXP (Universal Control Plane) flavour of Crossplane for that? No, the docs https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/docs/configuration state:
+
+> The Upbound AWS official provider may also be used with upstream Crossplane.
+
+So let's use the provider inside our project!
+
+
+
+### Using the official Upbound (Upjet generated) AWS Provider
+
+If we now integrate the offical AWS provider also https://github.com/upbound/provider-aws, we need to restructure our repo folders. As everything in crossplane is related to providers, these should be the top level directories. So the `crossplane-config` folder is gone, since we always configure a specific provider:
+
+```shell
+├── crossplane-install
+│   └── Chart.yaml
+├── provider-aws-crossplane-contrib
+│   ├── config
+│   │   ├── provider-aws.yaml
+│   │   └── provider-config-aws.yaml
+│   └── s3
+│       ├── claim.yaml
+│       ├── composition.yaml
+│       ├── crossplane.yaml
+│       └── definition.yaml
+├── provider-aws-s3
+│   ├── config
+│   └── s3
+│       ├── claim.yaml
+│       ├── composition-try-using-new-s3-sec.yaml
+│       ├── crossplane.yaml
+│       └── definition.yaml
+├── provider-azure-crossplane-contrib
+│   ├── config
+│   │   ├── provider-azure.yaml
+│   │   └── provider-config-azure.yaml
+│   └── storageaccount
+│       ├── claim.yaml
+│       ├── composition.yaml
+│       └── definition.yaml
+```
+
+Now before configuring the Upbound Provider, be sure to have the `aws-creds.conf` file in place and the provider secret created (as described in [Create aws-creds.conf file](#create-aws-credsconf-file) & [Create AWS Provider secret](#create-aws-provider-secret)):
+
+```shell
+kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
+```
+
+With the secret in place we can install the Upbound AWS Provider. Therefore the [provider-aws-s3/config/provider-aws.yaml](provider-aws-s3/config/provider-aws.yaml) looks only slightly different compared to the classic AWS Provider - only the `spec.package` changed:
+
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-s3:v0.46.0
+  packagePullPolicy: Always
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+```
+
+Install it via `kubectl`:
+
+
+```shell
+kubectl apply -f provider-aws-s3/config/provider-aws.yaml
+```
+
+We need to wait for the Provider to become healthy as we're already used to from the classic providers:
+
+```shell
+kubectl wait "providers.pkg.crossplane.io/provider-aws" --for=condition=Healthy --timeout=180s
+```
+
+Obtain the status via `kubectl get provider.pkg.crossplane.io`:
+
+```shell
+$ kubectl get provider.pkg.crossplane.io
+NAME                          INSTALLED   HEALTHY   PACKAGE                                               AGE
+provider-aws                  True        True      xpkg.upbound.io/upbound/provider-aws-s3:v0.46.0       113s
+upbound-provider-family-aws   True        True      xpkg.upbound.io/upbound/provider-family-aws:v0.46.0   108s
+```
+
+
+
+
+To get our Provider finally working we also need to create a `ProviderConfig` accordingly. We need to adjust the `apiVersion` in our [provider-aws-s3/config/provider-config-aws.yaml](provider-aws-s3/config/provider-config-aws.yaml):
+
+```yaml
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-creds
+      key: creds
+```
+
+Apply it via `kubectl`:
+
+
+```shell
+kubectl apply -f provider-aws-s3/config/provider-config-aws.yaml
+```
+
+Now we should have everything in place to use the Upbound AWS Provider! We can double check via `kubectl get crossplane`:
+
+```shell
+$ kubectl get crossplane
+NAME                                    AGE
+providerconfig.aws.upbound.io/default   55s
+
+NAME                                                           HEALTHY   REVISION   IMAGE                                          STATE    DEP-FOUND   DEP-INSTALLED   AGE
+providerrevision.pkg.crossplane.io/provider-aws-6acd9324f315   True      1          xpkg.upbound.io/upbound/provider-aws:v0.34.0   Active                               17m
+
+NAME                                      INSTALLED   HEALTHY   PACKAGE                                        AGE
+provider.pkg.crossplane.io/provider-aws   True        True      xpkg.upbound.io/upbound/provider-aws:v0.34.0   18m
+
+NAME                                        AGE   TYPE         DEFAULT-SCOPE
+storeconfig.secrets.crossplane.io/default   22h   Kubernetes   crossplane-system
+```
+
+
+Now we should have some more Kubernetes API resources available:
+
+```shell
+$ kubectl api-resources | grep aws
+providerconfigs                                         aws.upbound.io/v1beta1                 false        ProviderConfig
+providerconfigusages                                    aws.upbound.io/v1beta1                 false        ProviderConfigUsage
+storeconfigs                                            aws.upbound.io/v1alpha1                false        StoreConfig
+bucketaccelerateconfigurations                          s3.aws.upbound.io/v1beta1              false        BucketAccelerateConfiguration
+bucketacls                                              s3.aws.upbound.io/v1beta1              false        BucketACL
+bucketanalyticsconfigurations                           s3.aws.upbound.io/v1beta1              false        BucketAnalyticsConfiguration
+bucketcorsconfigurations                                s3.aws.upbound.io/v1beta1              false        BucketCorsConfiguration
+bucketintelligenttieringconfigurations                  s3.aws.upbound.io/v1beta1              false        BucketIntelligentTieringConfiguration
+bucketinventories                                       s3.aws.upbound.io/v1beta1              false        BucketInventory
+bucketlifecycleconfigurations                           s3.aws.upbound.io/v1beta1              false        BucketLifecycleConfiguration
+bucketloggings                                          s3.aws.upbound.io/v1beta1              false        BucketLogging
+bucketmetrics                                           s3.aws.upbound.io/v1beta1              false        BucketMetric
+bucketnotifications                                     s3.aws.upbound.io/v1beta1              false        BucketNotification
+bucketobjectlockconfigurations                          s3.aws.upbound.io/v1beta1              false        BucketObjectLockConfiguration
+bucketobjects                                           s3.aws.upbound.io/v1beta1              false        BucketObject
+bucketownershipcontrols                                 s3.aws.upbound.io/v1beta1              false        BucketOwnershipControls
+bucketpolicies                                          s3.aws.upbound.io/v1beta1              false        BucketPolicy
+bucketpublicaccessblocks                                s3.aws.upbound.io/v1beta1              false        BucketPublicAccessBlock
+bucketreplicationconfigurations                         s3.aws.upbound.io/v1beta1              false        BucketReplicationConfiguration
+bucketrequestpaymentconfigurations                      s3.aws.upbound.io/v1beta1              false        BucketRequestPaymentConfiguration
+buckets                                                 s3.aws.upbound.io/v1beta1              false        Bucket
+bucketserversideencryptionconfigurations                s3.aws.upbound.io/v1beta1              false        BucketServerSideEncryptionConfiguration
+bucketversionings                                       s3.aws.upbound.io/v1beta1              false        BucketVersioning
+bucketwebsiteconfigurations                             s3.aws.upbound.io/v1beta1              false        BucketWebsiteConfiguration
+objectcopies                                            s3.aws.upbound.io/v1beta1              false        ObjectCopy
+objects                                                 s3.aws.upbound.io/v1beta1              false        Object
+```
+
+
+
+
 
 
 ### Create ProviderConfig to consume the Secret containing AWS credentials
@@ -655,6 +894,186 @@ Now also the S3 Bucket should be removed by crossplane.
 
 
 
+## Rebuilding the S3 Composition to get our Bucket working again after 04.25.2023
+
+https://github.com/aws/aws-cdk/issues/25288#issuecomment-1522011311
+
+https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.39.0
+
+https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-policy-language-overview.html
+
+https://stackoverflow.com/questions/76097031/aws-s3-bucket-cannot-have-acls-set-with-objectownerships-bucketownerenforced-s 
+
+https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1 
+
+
+
+
+According to https://github.com/hashicorp/terraform-provider-aws/issues/28353 and https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl we need to separate `Bucket` creation from `BucketPublicAccessBlock`, `BucketOwnershipControls` and `BucketACL` - which should now be available finally leveraging the Upbound AWS Provider:
+
+```yaml
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: objectstorage-composition
+  labels:
+    # An optional convention is to include a label of the XRD. This allows
+    # easy discovery of compatible Compositions.
+    crossplane.io/xrd: xobjectstorages.crossplane.jonashackt.io
+    # The following label marks this Composition for AWS. This label can 
+    # be used in 'compositionSelector' in an XR or Claim.
+    provider: aws
+spec:
+  # Each Composition must declare that it is compatible with a particular type
+  # of Composite Resource using its 'compositeTypeRef' field. The referenced
+  # version must be marked 'referenceable' in the XRD that defines the XR.
+  compositeTypeRef:
+    apiVersion: crossplane.jonashackt.io/v1alpha1
+    kind: XObjectStorage
+  
+  # When an XR is created in response to a claim Crossplane needs to know where
+  # it should create the XR's connection secret. This is configured using the
+  # 'writeConnectionSecretsToNamespace' field.
+  writeConnectionSecretsToNamespace: crossplane-system
+  
+  # Each Composition must specify at least one composed resource template.
+  resources:
+    # Providing a unique name for each entry is good practice.
+    # Only identifies the resources entry within the Composition. Required in future crossplane API versions.
+    - name: bucket
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/Bucket/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: Bucket
+        metadata: {}
+        spec:
+          deletionPolicy: Delete
+      
+      patches:
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
+    - name: bucketpublicaccessblock
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketPublicAccessBlock
+        spec:
+          forProvider:
+            blockPublicAcls: false
+            blockPublicPolicy: false
+            ignorePublicAcls: false
+            restrictPublicBuckets: false
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketPABName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
+    - name: bucketownershipcontrols
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketOwnershipControls/v1beta1#doc:spec-forProvider-rule-objectOwnership
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketOwnershipControls
+        spec:
+          forProvider:
+            rule:
+              - objectOwnership: ObjectWriter
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketOSCName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
+    - name: bucketacl
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketACL/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketACL
+        spec:
+          forProvider:
+            acl: "public-read"
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketAclName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+  
+    - name: bucketwebsiteconfiguration
+      base:
+        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketWebsiteConfiguration/v1beta1
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketWebsiteConfiguration
+        spec:
+          forProvider:
+            indexDocument:
+              - suffix: index.html
+
+      patches:
+        - fromFieldPath: "spec.parameters.bucketWebConfName"
+          toFieldPath: "metadata.name"
+        - fromFieldPath: "spec.parameters.bucketName"
+          toFieldPath: "spec.forProvider.bucketRef.name"
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+
+  # If you find yourself repeating patches a lot you can group them as a named
+  # 'patch set' then use a PatchSet type patch to reference them.
+  #patchSets:
+```
+
+
+Let's finally create our XRD, Composition and Claim using the Upbound AWS Provider:
+
+```shell
+kubectl apply -f provider-aws-s3/definition.yaml
+kubectl get xrd
+
+kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
+
+kubectl apply -f provider-aws-s3/composition.yaml
+
+kubectl apply -f provider-aws-s3/claim.yaml
+
+kubectl wait --for=condition=ready --timeout=120s claim managed-upbound-s3 
+
+kubectl get crossplane 
+```
+
+
+## Access our Bucket
+
+If we want to get really fancy, we can also upload our []() again like with the classic crossplane provider:
+
+```shell
+aws s3 sync static s3://devopsthde-bucket --acl public-read
+```
+
+And don't forget to remove everything in the end:
+
+```shell
+aws s3 rm s3://devopsthde-bucket/index.html
+
+kubectl delete -f provider-aws-s3/claim.yaml
+```
+
+
+
+
+
+
 
 # Configure Crossplane to access Azure
 
@@ -780,7 +1199,7 @@ kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
 Otherwise we may run into errors like this when applying the `ProviderConfig` right after the Provider.
 
 
-### Create ProviderConfig to consume the Secret containing AWS credentials
+### Create ProviderConfig to consume the Secret containing Azure credentials
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure-the-provider
 
@@ -987,328 +1406,6 @@ And also our Storage account should be visible inside the group:
 
 
 
-# The problem with Open Source Crossplane: Provider Coverage Problem
-
-See this blog post https://blog.upbound.io/first-official-providers/ and the paragraph `Provider Coverage Problem`:
-
-> The Crossplane community has been adding CustomResourceDefinitions (CRDs) to cover the API surface, but the pace is unable to catch up with users who are blocked from getting into production with Crossplane due to the lack of coverage. To give you an idea, AWS has ~1000 resources and the classic AWS provider has yet to cover ~200 as of writing.
-
-Now with the classic AWS provider https://marketplace.upbound.io/providers/crossplane-contrib/provider-aws/v0.39.0/crds you have around 180 CRDs available. If you only need the CRDs that are provided by this classic provider, everything is okay. But I recently stumbled upon a new security default implementation of AWS S3: https://github.com/jonashackt/crossplane-aws-azure/issues/12
-
-This project stopped to work, simply since AWS doesn't support Access Control Lists (ACLs) for all new S3 Buckets anymore. See https://github.com/hashicorp/terraform-provider-aws/issues/28353
-
-> Starting in April 2023, Amazon S3 will introduce two new default bucket security settings by automatically enabling S3 Block Public Access and disabling S3 access control lists (ACLs) for all new S3 buckets.
-
-This in fact means, that we not only need the `Bucket` CRD, but we additionally need `BucketACL`, `BucketPublicAccessBlock` and `BucketOwnershipControls`, which are only available in the so called official Upbound providers with their 901 CRDs: https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/crds
-
-
-Up until now I didn't really know the difference between the classic providers and the official providers. But the official providers are based on the tool Upjet https://github.com/upbound/upjet/ which is the successor of the former Terrajet https://github.com/crossplane/terrajet, where Terraform modules are used to generate Crossplane CRDs. With this approach, every API Terraform provides is also available in Crossplane. Upjet is currently used to generate all CRDs for the official AWS, Azure and GCP providers.
-
-And with Upjet it's possible to generate really any Crossplane provider from Terraform, meaning one can rely on every Provider Terraform already has: https://registry.terraform.io/browse/providers
-
-Why not use Terraform then you may ask. Theres a good post here https://blog.crossplane.io/crossplane-vs-terraform/ which makes the point, that Terraform can only be used from a bash script - but Crossplane delivers a control plane based approach, which continously reconciles all infrastructure configured inside of it.
-
-So TLDR: To fix the error https://github.com/jonashackt/crossplane-aws-azure/issues/12
-
-```shell
-S3 creation error: CannotCreateExternalResource managed/bucket.s3.aws.crossplane.io failed to create the Bucket: InvalidBucketAclWithObjectOwnership: Bucket cannot have ACLs set with ObjectOwnership's BucketOwnerEnforced setting
-```
-
-we need to switch over to the official AWS provider based on Upjet. Do we need to use the UXP (Universal Control Plane) flavour of Crossplane for that? No, the docs https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/docs/configuration state:
-
-> The Upbound AWS official provider may also be used with upstream Crossplane.
-
-So let's use the provider inside our project!
-
-
-
-## Using the official Upjet generated AWS Provider
-
-If we now integrate the offical AWS provider also https://github.com/upbound/provider-aws, we need to restructure our repo folders. As everything in crossplane is related to providers, these should be the top level directories. So the `crossplane-config` folder is gone, since we always configure a specific provider:
-
-```shell
-├── crossplane-install
-│   └── Chart.yaml
-├── provider-aws-crossplane-contrib
-│   ├── config
-│   │   ├── provider-aws.yaml
-│   │   └── provider-config-aws.yaml
-│   └── s3
-│       ├── claim.yaml
-│       ├── composition.yaml
-│       ├── crossplane.yaml
-│       └── definition.yaml
-├── provider-aws-upbound
-│   ├── config
-│   └── s3
-│       ├── claim.yaml
-│       ├── composition-try-using-new-s3-sec.yaml
-│       ├── crossplane.yaml
-│       └── definition.yaml
-├── provider-azure-crossplane-contrib
-│   ├── config
-│   │   ├── provider-azure.yaml
-│   │   └── provider-config-azure.yaml
-│   └── storageaccount
-│       ├── claim.yaml
-│       ├── composition.yaml
-│       └── definition.yaml
-```
-
-Now before configuring the Upbound Provider, be sure to have the `aws-creds.conf` file in place and the provider secret created (as described in [Create aws-creds.conf file](#create-aws-credsconf-file) & [Create AWS Provider secret](#create-aws-provider-secret)):
-
-```shell
-kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
-```
-
-With the secret in place we can install the Upbound AWS Provider. Therefore the [provider-aws-upbound/config/provider-aws.yaml](provider-aws-upbound/config/provider-aws.yaml) looks only slightly different compared to the classic AWS Provider - only the `spec.package` changed:
-
-```yaml
-apiVersion: pkg.crossplane.io/v1
-kind: Provider
-metadata:
-  name: provider-aws
-spec:
-  package: xpkg.upbound.io/upbound/provider-aws:v0.34.0
-  packagePullPolicy: Always
-  revisionActivationPolicy: Automatic
-  revisionHistoryLimit: 1
-```
-
-Install it via `kubectl`:
-
-
-```shell
-kubectl apply -f provider-aws-upbound/config/provider-aws.yaml
-```
-
-We need to wait for the Provider to become healthy as we're already used to from the classic providers:
-
-```shell
-kubectl wait "providers.pkg.crossplane.io/provider-aws" --for=condition=Healthy --timeout=180s
-```
-
-To get our Provider finally working we also need to create a `ProviderConfig` accordingly. We need to adjust the `apiVersion` in our [provider-aws-upbound/config/provider-config-aws.yaml](provider-aws-upbound/config/provider-config-aws.yaml):
-
-```yaml
-apiVersion: aws.upbound.io/v1beta1
-kind: ProviderConfig
-metadata:
-  name: default
-spec:
-  credentials:
-    source: Secret
-    secretRef:
-      namespace: crossplane-system
-      name: aws-creds
-      key: creds
-```
-
-Apply it via `kubectl`:
-
-
-```shell
-kubectl apply -f provider-aws-upbound/config/provider-config-aws.yaml
-```
-
-Now we should have everything in place to use the Upbound AWS Provider! We can double check via `kubectl get crossplane`:
-
-```shell
-$ kubectl get crossplane
-NAME                                    AGE
-providerconfig.aws.upbound.io/default   55s
-
-NAME                                                           HEALTHY   REVISION   IMAGE                                          STATE    DEP-FOUND   DEP-INSTALLED   AGE
-providerrevision.pkg.crossplane.io/provider-aws-6acd9324f315   True      1          xpkg.upbound.io/upbound/provider-aws:v0.34.0   Active                               17m
-
-NAME                                      INSTALLED   HEALTHY   PACKAGE                                        AGE
-provider.pkg.crossplane.io/provider-aws   True        True      xpkg.upbound.io/upbound/provider-aws:v0.34.0   18m
-
-NAME                                        AGE   TYPE         DEFAULT-SCOPE
-storeconfig.secrets.crossplane.io/default   22h   Kubernetes   crossplane-system
-```
-
-
-
-## Rebuilding the S3 Composition to get our Bucket working again after 04.25.2023
-
-https://github.com/aws/aws-cdk/issues/25288#issuecomment-1522011311
-
-https://doc.crds.dev/github.com/crossplane/provider-aws/s3.aws.crossplane.io/Bucket/v1beta1@v0.39.0
-
-https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-policy-language-overview.html
-
-https://stackoverflow.com/questions/76097031/aws-s3-bucket-cannot-have-acls-set-with-objectownerships-bucketownerenforced-s 
-
-https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1 
-
-
-
-
-According to https://github.com/hashicorp/terraform-provider-aws/issues/28353 and https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl we need to separate `Bucket` creation from `BucketPublicAccessBlock`, `BucketOwnershipControls` and `BucketACL` - which should now be available finally leveraging the Upbound AWS Provider:
-
-```yaml
----
-apiVersion: apiextensions.crossplane.io/v1
-kind: Composition
-metadata:
-  name: objectstorage-composition
-  labels:
-    # An optional convention is to include a label of the XRD. This allows
-    # easy discovery of compatible Compositions.
-    crossplane.io/xrd: xobjectstorages.crossplane.jonashackt.io
-    # The following label marks this Composition for AWS. This label can 
-    # be used in 'compositionSelector' in an XR or Claim.
-    provider: aws
-spec:
-  # Each Composition must declare that it is compatible with a particular type
-  # of Composite Resource using its 'compositeTypeRef' field. The referenced
-  # version must be marked 'referenceable' in the XRD that defines the XR.
-  compositeTypeRef:
-    apiVersion: crossplane.jonashackt.io/v1alpha1
-    kind: XObjectStorage
-  
-  # When an XR is created in response to a claim Crossplane needs to know where
-  # it should create the XR's connection secret. This is configured using the
-  # 'writeConnectionSecretsToNamespace' field.
-  writeConnectionSecretsToNamespace: crossplane-system
-  
-  # Each Composition must specify at least one composed resource template.
-  resources:
-    # Providing a unique name for each entry is good practice.
-    # Only identifies the resources entry within the Composition. Required in future crossplane API versions.
-    - name: bucket
-      base:
-        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/Bucket/v1beta1
-        apiVersion: s3.aws.upbound.io/v1beta1
-        kind: Bucket
-        metadata: {}
-        spec:
-          deletionPolicy: Delete
-      
-      patches:
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "metadata.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
-
-    - name: bucketpublicaccessblock
-      base:
-        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketPublicAccessBlock/v1beta1
-        apiVersion: s3.aws.upbound.io/v1beta1
-        kind: BucketPublicAccessBlock
-        spec:
-          forProvider:
-            blockPublicAcls: false
-            blockPublicPolicy: false
-            ignorePublicAcls: false
-            restrictPublicBuckets: false
-
-      patches:
-        - fromFieldPath: "spec.parameters.bucketPABName"
-          toFieldPath: "metadata.name"
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "spec.forProvider.bucketRef.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
-
-    - name: bucketownershipcontrols
-      base:
-        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketOwnershipControls/v1beta1#doc:spec-forProvider-rule-objectOwnership
-        apiVersion: s3.aws.upbound.io/v1beta1
-        kind: BucketOwnershipControls
-        spec:
-          forProvider:
-            rule:
-              - objectOwnership: ObjectWriter
-
-      patches:
-        - fromFieldPath: "spec.parameters.bucketOSCName"
-          toFieldPath: "metadata.name"
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "spec.forProvider.bucketRef.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
-
-    - name: bucketacl
-      base:
-        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketACL/v1beta1
-        apiVersion: s3.aws.upbound.io/v1beta1
-        kind: BucketACL
-        spec:
-          forProvider:
-            acl: "public-read"
-
-      patches:
-        - fromFieldPath: "spec.parameters.bucketAclName"
-          toFieldPath: "metadata.name"
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "spec.forProvider.bucketRef.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
-  
-    - name: bucketwebsiteconfiguration
-      base:
-        # see https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/s3.aws.upbound.io/BucketWebsiteConfiguration/v1beta1
-        apiVersion: s3.aws.upbound.io/v1beta1
-        kind: BucketWebsiteConfiguration
-        spec:
-          forProvider:
-            indexDocument:
-              - suffix: index.html
-
-      patches:
-        - fromFieldPath: "spec.parameters.bucketWebConfName"
-          toFieldPath: "metadata.name"
-        - fromFieldPath: "spec.parameters.bucketName"
-          toFieldPath: "spec.forProvider.bucketRef.name"
-        - fromFieldPath: "spec.parameters.region"
-          toFieldPath: "spec.forProvider.region"
-
-  # If you find yourself repeating patches a lot you can group them as a named
-  # 'patch set' then use a PatchSet type patch to reference them.
-  #patchSets:
-```
-
-
-Let's finally create our XRD, Composition and Claim using the Upbound AWS Provider:
-
-```shell
-kubectl apply -f provider-aws-upbound/s3/definition.yaml
-kubectl get xrd
-
-kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
-
-kubectl apply -f provider-aws-upbound/s3/composition.yaml
-
-kubectl apply -f provider-aws-upbound/s3/claim.yaml
-
-kubectl wait --for=condition=ready --timeout=120s claim managed-upbound-s3 
-
-kubectl get crossplane 
-```
-
-
-## Access our Bucket
-
-If we want to get really fancy, we can also upload our []() again like with the classic crossplane provider:
-
-```shell
-aws s3 sync static s3://devopsthde-bucket --acl public-read
-```
-
-And don't forget to remove everything in the end:
-
-```shell
-aws s3 rm s3://devopsthde-bucket/index.html
-
-kubectl delete -f provider-aws-upbound/s3/claim.yaml
-```
-
-
-
-
-
 
 
 
@@ -1435,7 +1532,14 @@ Argo + crossplane https://morningspace.medium.com/using-crossplane-in-gitops-wha
 Infrastructure-as-Apps https://codefresh.io/blog/infrastructure-as-apps-the-gitops-future-of-infra-as-code/
 
 
-VMWare support https://blog.crossplane.io/adding-vmware-support-to-crossplane-using-terraform/
+
+New Charter from Sep 2023 on: https://github.com/crossplane/crossplane/pull/4643 Developer Experience and Providers are added to the scope of crossplane
+
+Even Upjet and the major Upbound developed (aka Upjet generated) Providers are donated to the OS project & CNCF: https://blog.crossplane.io/charter-expansion-upjet-donation/
+
+See also https://github.com/crossplane-contrib/provider-aws/issues/1954
+
+
 
 
 ### Crossplane + AWS

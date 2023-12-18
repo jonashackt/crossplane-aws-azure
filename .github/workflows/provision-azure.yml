@@ -3,7 +3,7 @@ name: provision-azure
 on: [push]
 
 env:
-  KIND_NODE_VERSION: v1.27.1
+  KIND_NODE_VERSION: v1.29.0
   BUCKET_NAME: devopsthde-bucket
   # Azure
   ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
