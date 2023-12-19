@@ -108,6 +108,9 @@ jobs:
           echo "### Giving the Azure Provider some time to create the resources"
           sleep 120s
 
+          echo "### Trace status of Azure ResourceGroup & Storage Account"
+          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
+
           echo "### Wait until ResourceGroup is ready"
           kubectl wait --for=condition=ready --timeout=120s resourcegroup rg-crossplane
 
