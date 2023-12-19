@@ -105,8 +105,8 @@ jobs:
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
-          echo "### Giving the Azure Provider some time to create the resources"
-          sleep 120s
+          echo "### Giving the Azure Provider 30s to create the resources"
+          sleep 30s
 
           echo "### Trace status of Azure ResourceGroup & Storage Account"
           crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
@@ -117,7 +117,7 @@ jobs:
           echo "### Trace status of Azure ResourceGroup & Storage Account"
           crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 
-          echo "### Wait until Claim & XR (Composite) are ready 
+          echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s storageazure.crossplane.jonashackt.io/managed-storage-account
 
           echo "### Trace status of Azure ResourceGroup & Storage Account"
