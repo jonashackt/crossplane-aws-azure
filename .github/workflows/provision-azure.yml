@@ -109,19 +109,19 @@ jobs:
           sleep 120s
 
           echo "### Trace status of Azure ResourceGroup & Storage Account"
-          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
+          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 
           echo "### Wait until ResourceGroup is ready"
           kubectl wait --for=condition=ready --timeout=120s resourcegroup rg-crossplane
 
           echo "### Trace status of Azure ResourceGroup & Storage Account"
-          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
+          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 
           echo "### Wait until Claim & XR (Composite) are ready 
           kubectl wait --for=condition=ready --timeout=120s storageazure.crossplane.jonashackt.io/managed-storage-account
 
           echo "### Trace status of Azure ResourceGroup & Storage Account"
-          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
+          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 
       - name: Delete Resources
         run: |
