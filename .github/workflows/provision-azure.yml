@@ -69,16 +69,16 @@ jobs:
           echo "### Create Azure Provider secret"
           kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
 
-          echo "### Install the crossplane Azure Provider"
-          kubectl apply -f provider-azure-crossplane-contrib/config/provider-azure.yaml
+          echo "### Install the crossplane Azure Provider (now using Upbound official Azure Provider Families)"
+          kubectl apply -f upbound/provider-azure-storage/config/provider-azure-storage.yaml
 
           kubectl get provider.pkg.crossplane.io
 
           echo "### Wait until Azure Provider is up and running"
-          kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
+          kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure-storage
 
           echo "### Create ProviderConfig to consume the Secret containing Azure credentials"
-          kubectl apply -f provider-azure-crossplane-contrib/config/provider-config-azure.yaml
+          kubectl apply -f upbound/provider-azure-storage/config/provider-config-azure.yaml
 
           echo "### Get overall provider status"
           kubectl get provider
@@ -86,17 +86,17 @@ jobs:
       - name: Create XRD, Composite & Claim to create ResourceGroup & StorageAccount
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
-          kubectl apply -f provider-azure-crossplane-contrib/storageaccount/definition.yaml
+          kubectl apply -f upbound/provider-azure-storage/definition.yaml
           kubectl get xrd
           
           echo "### Wait for XRD to become Offered"
           kubectl wait --for=condition=Offered --timeout=120s xrd xstoragesazure.crossplane.jonashackt.io  
 
           echo "### Create Composition"
-          kubectl apply -f provider-azure-crossplane-contrib/storageaccount/composition.yaml
+          kubectl apply -f upbound/provider-azure-storage/composition.yaml
 
           echo "### Create Claim, which should create ResourceGroup & StorageAccount"
-          kubectl apply -f provider-azure-crossplane-contrib/storageaccount/claim.yaml
+          kubectl apply -f upbound/provider-azure-storage/claim.yaml
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
@@ -110,4 +110,4 @@ jobs:
       - name: Delete Resources
         run: |
           echo "### Remove CompositeResourceClaim to delete Storage Account and Resource Group"
-          kubectl delete -f provider-azure-crossplane-contrib/storageaccount/claim.yaml
+          kubectl delete -f upbound/provider-azure-storage/claim.yaml

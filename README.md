@@ -258,7 +258,7 @@ We can install crossplane Packages (which can be Providers or Configurations) vi
 kubectl crossplane install provider crossplanecontrib/provider-aws:v0.22.0
 ```
 
-Or we can create our own [provider-aws.yaml](provider-aws-crossplane-contrib/config/provider-aws.yaml) file like this:
+Or we can create our own [provider-aws.yaml](crossplane-contrib/provider-aws/config/provider-aws.yaml) file like this:
 
 > This `kind: Provider` with `apiVersion: pkg.crossplane.io/v1` is completely different from the `kind: Provider` which we want to consume! These use `apiVersion: meta.pkg.crossplane.io/v1`.
 
@@ -277,7 +277,7 @@ spec:
 Install the AWS provider using `kubectl`:
 
 ```shell
-kubectl apply -f provider-aws-crossplane-contrib/config/provider-aws.yaml
+kubectl apply -f crossplane-contrib/provider-aws/config/provider-aws.yaml
 ```
 
 The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. I'am not sure, if the Crossplane team will provide an installation method where we can use tools like Renovate to keep our Crossplane providers up to date. A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
@@ -350,32 +350,32 @@ So let's use the provider inside our project!
 If we now integrate the offical AWS provider also https://github.com/upbound/provider-aws, we need to restructure our repo folders. As everything in crossplane is related to providers, these should be the top level directories. So the `crossplane-config` folder is gone, since we always configure a specific provider:
 
 ```shell
-├── crossplane-install
-│   └── Chart.yaml
-├── provider-aws-crossplane-contrib
-│   ├── config
-│   │   ├── provider-aws.yaml
-│   │   └── provider-config-aws.yaml
-│   └── s3
-│       ├── claim.yaml
-│       ├── composition.yaml
-│       ├── crossplane.yaml
-│       └── definition.yaml
-├── provider-aws-s3
-│   ├── config
-│   └── s3
-│       ├── claim.yaml
-│       ├── composition-try-using-new-s3-sec.yaml
-│       ├── crossplane.yaml
-│       └── definition.yaml
-├── provider-azure-crossplane-contrib
-│   ├── config
-│   │   ├── provider-azure.yaml
-│   │   └── provider-config-azure.yaml
-│   └── storageaccount
-│       ├── claim.yaml
-│       ├── composition.yaml
-│       └── definition.yaml
+├── crossplane-contrib
+│   ├── provider-aws
+│   │   ├── config
+│   │   │   ├── provider-aws.yaml
+│   │   │   └── provider-config-aws.yaml
+│   │   └── s3
+│   │       ├── claim.yaml
+│   │       ├── composition.yaml
+│   │       ├── crossplane.yaml
+│   │       └── definition.yaml
+│   └── provider-azure
+│       ├── config
+│       │   ├── provider-azure.yaml
+│       │   └── provider-config-azure.yaml
+│       └── storageaccount
+│           ├── claim.yaml
+│           ├── composition.yaml
+│           └── definition.yaml
+└── upbound
+    └── provider-aws-s3
+        ├── claim.yaml
+        ├── composition.yaml
+        ├── config
+        │   ├── provider-aws.yaml
+        │   └── provider-config-aws.yaml
+        └── definition.yaml
 ```
 
 Now before configuring the Upbound Provider, be sure to have the `aws-creds.conf` file in place and the provider secret created (as described in [Create aws-creds.conf file](#create-aws-credsconf-file) & [Create AWS Provider secret](#create-aws-provider-secret)):
@@ -384,13 +384,13 @@ Now before configuring the Upbound Provider, be sure to have the `aws-creds.conf
 kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
 ```
 
-With the secret in place we can install the Upbound AWS Provider. Therefore the [provider-aws-s3/config/provider-aws.yaml](provider-aws-s3/config/provider-aws.yaml) looks only slightly different compared to the classic AWS Provider - only the `spec.package` changed:
+With the secret in place we can install the Upbound AWS Provider. Therefore the [upbound/provider-aws-s3/config/provider-aws-s3.yaml](upbound/provider-aws-s3/config/provider-aws-s3.yaml) looks only slightly different compared to the classic AWS Provider - only the `spec.package` changed:
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: provider-aws
+  name: provider-aws-s3
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-s3:v0.46.0
   packagePullPolicy: Always
@@ -402,7 +402,7 @@ Install it via `kubectl`:
 
 
 ```shell
-kubectl apply -f provider-aws-s3/config/provider-aws.yaml
+kubectl apply -f upbound/provider-aws-s3/config/provider-aws-s3.yaml
 ```
 
 We need to wait for the Provider to become healthy as we're already used to from the classic providers:
@@ -423,7 +423,7 @@ upbound-provider-family-aws   True        True      xpkg.upbound.io/upbound/prov
 
 
 
-To get our Provider finally working we also need to create a `ProviderConfig` accordingly. We need to adjust the `apiVersion` in our [provider-aws-s3/config/provider-config-aws.yaml](provider-aws-s3/config/provider-config-aws.yaml):
+To get our Provider finally working we also need to create a `ProviderConfig` accordingly. We need to adjust the `apiVersion` in our [upbound/provider-aws-s3/config/provider-config-aws.yaml](upbound/provider-aws-s3/config/provider-config-aws.yaml):
 
 ```yaml
 apiVersion: aws.upbound.io/v1beta1
@@ -443,7 +443,7 @@ Apply it via `kubectl`:
 
 
 ```shell
-kubectl apply -f provider-aws-s3/config/provider-config-aws.yaml
+kubectl apply -f upbound/provider-aws-s3/config/provider-config-aws.yaml
 ```
 
 Now we should have everything in place to use the Upbound AWS Provider! We can double check via `kubectl get crossplane`:
@@ -507,7 +507,7 @@ https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure
 
 https://crossplane.io/docs/v1.8/cloud-providers/aws/aws-provider.html#optional-setup-aws-provider-manually
 
-Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-aws.yaml](provider-aws-crossplane-contrib/config/provider-config-aws.yaml):
+Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-aws.yaml](crossplane-contrib/provider-aws/config/provider-config-aws.yaml):
 
 ```yaml
 apiVersion: aws.crossplane.io/v1beta1
@@ -530,7 +530,7 @@ The `secretRef.name` and `secretRef.key` has to match the fields of the already 
 Apply it with:
 
 ```shell
-kubectl apply -f provider-aws-crossplane-contrib/config/provider-config-aws.yaml
+kubectl apply -f crossplane-contrib/provider-aws/config/provider-config-aws.yaml
 ```
 
 
@@ -585,7 +585,7 @@ Note that Crossplane will be automatically extended this section. Therefore the 
     status.connectionDetails
 
 
-So our Composite Resource Definition (XRD) for our S3 Bucket could look like [provider-aws-crossplane-contrib/s3/definition.yaml](provider-aws-crossplane-contrib/s3/definition.yaml):
+So our Composite Resource Definition (XRD) for our S3 Bucket could look like [crossplane-contrib/provider-aws/s3/definition.yaml](crossplane-contrib/provider-aws/s3/definition.yaml):
 
 ```yaml
 ---
@@ -645,7 +645,7 @@ spec:
 Install the XRD into our cluster with:
 
 ```shell
-kubectl apply -f provider-aws-crossplane-contrib/s3/definition.yaml
+kubectl apply -f crossplane-contrib/provider-aws/s3/definition.yaml
 ```
 
 We can double check the CRDs beeing created with `kubectl get crds` and filter them using `grep` to our group name `crossplane.jonashackt.io`:
@@ -663,7 +663,7 @@ The main work in Crossplane has to be done crafting the Compositions. This is be
 
 Detailled docs to many of the possible manifest configurations can be found here https://crossplane.io/docs/v1.8/reference/composition.html#compositions
 
-A Composite to manage an S3 Bucket in AWS with public access for static website hosting could for example look like this [provider-aws-crossplane-contrib/s3/composition.yaml](provider-aws-crossplane-contrib/s3/composition.yaml):
+A Composite to manage an S3 Bucket in AWS with public access for static website hosting could for example look like this [crossplane-contrib/provider-aws/s3/composition.yaml](crossplane-contrib/provider-aws/s3/composition.yaml):
 
 ```yaml
 ---
@@ -725,7 +725,7 @@ spec:
 Install our Composition with 
 
 ```shell
-kubectl apply -f provider-aws-crossplane-contrib/s3/composition.yaml
+kubectl apply -f crossplane-contrib/provider-aws/s3/composition.yaml
 ```
 
 
@@ -736,7 +736,7 @@ Crossplane could look quite intimidating when having a first look. There are few
 
 https://crossplane.io/docs/v1.8/reference/composition.html#composite-resources-and-claims
 
-Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](provider-aws-crossplane-contrib/s3/claim.yaml):
+Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-contrib/provider-aws/s3/claim.yaml):
 
 ```yaml
 ---
@@ -764,7 +764,7 @@ spec:
 Testdrive with:
 
 ```shell
-kubectl apply -f provider-aws-crossplane-contrib/s3/claim.yaml
+kubectl apply -f crossplane-contrib/provider-aws/s3/claim.yaml
 ```
 
 When somthing goes wrong with the validation, this could look like this:
@@ -1038,14 +1038,14 @@ spec:
 Let's finally create our XRD, Composition and Claim using the Upbound AWS Provider:
 
 ```shell
-kubectl apply -f provider-aws-s3/definition.yaml
+kubectl apply -f upbound/provider-aws-s3/definition.yaml
 kubectl get xrd
 
 kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 
-kubectl apply -f provider-aws-s3/composition.yaml
+kubectl apply -f upbound/provider-aws-s3/composition.yaml
 
-kubectl apply -f provider-aws-s3/claim.yaml
+kubectl apply -f upbound/provider-aws-s3/claim.yaml
 
 kubectl wait --for=condition=ready --timeout=120s claim managed-upbound-s3 
 
@@ -1066,7 +1066,7 @@ And don't forget to remove everything in the end:
 ```shell
 aws s3 rm s3://devopsthde-bucket/index.html
 
-kubectl delete -f provider-aws-s3/claim.yaml
+kubectl delete -f upbound/provider-aws-s3/claim.yaml
 ```
 
 
@@ -1077,9 +1077,9 @@ kubectl delete -f provider-aws-s3/claim.yaml
 
 # Configure Crossplane to access Azure
 
-https://crossplane.io/docs/v1.8/cloud-providers/azure/azure-provider.html
+https://docs.crossplane.io/v1.14/getting-started/provider-azure/
 
-https://github.com/crossplane-contrib/provider-azure
+https://marketplace.upbound.io/providers/upbound/provider-azure-storage/v0.39.0
 
 
 ### Create crossplane-azure-provider-key.json
@@ -1156,30 +1156,24 @@ If everything went well there should be a new `azure-account-creds` Secret ready
 
 https://crossplane.io/docs/v1.8/concepts/packages.html#installing-a-package
 
-We can install crossplane Packages (which can be Providers or Configurations) via the Crossplane CLI with for example:
-
-```shell
-kubectl crossplane install provider crossplane/provider-azure:v0.20.1
-```
-
-Or we can create our own [provider-aws.yaml](provider-aws-crossplane-contrib/config/provider-aws.yaml) file like this:
+Let's create a [provider-azure-storage.yaml](upbound/provider-azure-storage/config/provider-azure-storage.yaml) file like this:
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: provider-azure
+  name: provider-azure-storage
 spec:
-  package: crossplane/provider-azure:v0.19.0
+  package: xpkg.upbound.io/upbound/provider-azure-storage:v0.39.0
   packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
 ```
 
-Install the Azure provider using `kubectl`:
+Install the Azure provider:
 
-```
-kubectl apply -f provider-azure-crossplane-contrib/config/provider-azure.yaml
+```shell
+kubectl apply -f upbound/provider-azure-storage/config/provider-azure-storage.yaml
 ```
 
 Now our first Crossplane Provider has been installed. You may check it with `kubectl get provider`:
@@ -1205,10 +1199,10 @@ https://crossplane.io/docs/v1.8/getting-started/install-configure.html#configure
 
 https://crossplane.io/docs/v1.8/cloud-providers/azure/azure-provider.html#setup-azure-providerconfig
 
-Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-azure.yaml](provider-azure-crossplane-contrib/config/provider-config-azure.yaml):
+Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-azure.yaml](crossplane-contrib/provider-azure/config/provider-config-azure.yaml):
 
 ```yaml
-apiVersion: azure.crossplane.io/v1beta1
+apiVersion: azure.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
@@ -1228,7 +1222,7 @@ The `secretRef.name` and `secretRef.key` has to match the fields of the already 
 Apply it with:
 
 ```shell
-kubectl apply -f provider-azure-crossplane-contrib/config/provider-config-azure.yaml
+kubectl apply -f upbound/provider-azure-storage/config/provider-config-azure.yaml
 ```
 
 __The crossplane core Controller and the Provider Azure Controller should now be ready to provision any infrastructure component in Azure!__
@@ -1237,15 +1231,15 @@ __The crossplane core Controller and the Provider Azure Controller should now be
 
 # Provision a StorageAccount in Azure with Crossplane
 
-https://doc.crds.dev/github.com/crossplane/provider-azure/storage.azure.crossplane.io/Account/v1alpha3@v0.19.0
+https://doc.crds.dev/github.com/upbound/provider-azure/storage.azure.upbound.io/Account/v1beta1@v0.38.2
 
-https://doc.crds.dev/github.com/crossplane/provider-azure/azure.crossplane.io/ResourceGroup/v1alpha3@v0.19.0
+https://doc.crds.dev/github.com/upbound/provider-azure/azure.upbound.io/ResourceGroup/v1beta1@v0.38.2
 
 
 
 ### Defining a CompositeResourceDefinition (XRD) for our Storage Account
 
-So our Composite Resource Definition (XRD) for our Storage Account could look like [provider-azure-crossplane-contrib/storageaccount/definition.yaml](provider-azure-crossplane-contrib/storageaccount/definition.yaml):
+So our Composite Resource Definition (XRD) for our Storage Account could look like [upbound/provider-azure-storage/definition.yaml](upbound/provider-azure-storage/definition.yaml):
 
 ```yaml
 ---
@@ -1295,7 +1289,7 @@ spec:
 Install the XRD into our cluster with:
 
 ```shell
-kubectl apply -f provider-azure-crossplane-contrib/storageaccount/definition.yaml
+kubectl apply -f upbound/provider-azure-storage/definition.yaml
 ```
 
 Let's wait for the XRD to become `Offered`:
@@ -1307,7 +1301,7 @@ kubectl wait --for=condition=Offered --timeout=120s xrd xstoragesazure.crossplan
 
 ### Craft a Composition to manage our needed cloud resources
 
-A Composite to manage an Storage Account in Azure with public access for static website hosting could for example look like this [provider-azure-crossplane-contrib/storageaccount/composition.yaml](provider-azure-crossplane-contrib/storageaccount/composition.yaml):
+A Composite to manage an Storage Account in Azure with public access for static website hosting could for example look like this [upbound/provider-azure-storage/composition.yaml](upbound/provider-azure-storage/composition.yaml):
 
 ```yaml
 ---
@@ -1329,7 +1323,7 @@ spec:
     - name: storageaccount
       base:
         # see https://doc.crds.dev/github.com/crossplane/provider-azure/storage.azure.crossplane.io/Account/v1alpha3@v0.19.0
-        apiVersion: storage.azure.crossplane.io/v1alpha3
+        apiVersion: storage.azure.upbound.io/v1beta1
         kind: Account
         metadata: {}
         spec:
@@ -1342,34 +1336,34 @@ spec:
         - fromFieldPath: spec.parameters.storageAccountName
           toFieldPath: metadata.name
         - fromFieldPath: spec.parameters.resourceGroupName
-          toFieldPath: spec.resourceGroupName
+          toFieldPath: spec.forProvider.resourceGroupName
         - fromFieldPath: spec.parameters.location
-          toFieldPath: spec.storageAccountSpec.location
+          toFieldPath: spec.forProvider.location
           
     - name: resourcegroup
       base:
         # see https://doc.crds.dev/github.com/crossplane/provider-azure/azure.crossplane.io/ResourceGroup/v1alpha3@v0.19.0
-        apiVersion: azure.crossplane.io/v1alpha3
+        apiVersion: azure.upbound.io/v1beta1
         kind: ResourceGroup
         metadata: {}
       patches:
         - fromFieldPath: spec.parameters.resourceGroupName
           toFieldPath: metadata.name
         - fromFieldPath: spec.parameters.location
-          toFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
 ```
 
 Install our Composition with 
 
 ```shell
-kubectl apply -f provider-azure-crossplane-contrib/storageaccount/composition.yaml
+kubectl apply -f upbound/provider-azure-storage/composition.yaml
 ```
 
 
 
 ### Craft a Composite Resource (XR) or Claim (XRC)
 
-Since we want to create a Storage Account, here's an suggestion for an [claim.yaml](provider-azure-crossplane-contrib/storageaccount/claim.yaml):
+Since we want to create a Storage Account, here's an suggestion for an [claim.yaml](upbound/provider-azure-storage/claim.yaml):
 
 ```yaml
 ---
@@ -1391,7 +1385,7 @@ spec:
 Testdrive with 
 
 ```shell
-kubectl apply -f provider-azure-crossplane-contrib/storageaccount/claim.yaml
+kubectl apply -f upbound/provider-azure-storage/claim.yaml
 ```
 
 Now have a look into the Azure Portal. Our Resource Group should show up:
@@ -1421,7 +1415,7 @@ Therefore we need a `crossplane.yaml` file as described in https://crossplane.io
 
 See also https://crossplane.io/docs/v1.8/concepts/packages.html#configuration-packages
 
-Our [provider-aws-crossplane-contrib/s3/crossplane.yaml](provider-aws-crossplane-contrib/s3/crossplane.yaml) is of `kind: Configuration` and defines the minimum crossplane version needed alongside the crossplane AWS provider:
+Our [crossplane-contrib/provider-aws/s3/crossplane.yaml](crossplane-contrib/provider-aws/s3/crossplane.yaml) is of `kind: Configuration` and defines the minimum crossplane version needed alongside the crossplane AWS provider:
 
 ```yaml
 apiVersion: meta.pkg.crossplane.io/v1
@@ -1449,7 +1443,7 @@ Really strange, getting
 
 ```shell
 kubectl crossplane build configuration
-kubectl crossplane: error: failed to build package: failed to parse package: {path:/Users/jonashecht/dev/kubernetes/crossplane-awws-azure/provider-aws-crossplane-contrib/s3/composition.yaml position:0}: no kind "S3Bucket" is registered for version "crossplane.jonashackt.io/v1alpha1" in scheme "/home/runner/work/crossplane/crossplane/internal/xpkg/scheme.go:47"
+kubectl crossplane: error: failed to build package: failed to parse package: {path:/Users/jonashecht/dev/kubernetes/crossplane-awws-azure/crossplane-contrib/provider-aws/s3/composition.yaml position:0}: no kind "S3Bucket" is registered for version "crossplane.jonashackt.io/v1alpha1" in scheme "/home/runner/work/crossplane/crossplane/internal/xpkg/scheme.go:47"
 ```
 
 
