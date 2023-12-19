@@ -21,11 +21,10 @@ spec:
         kind: Account
         metadata: {}
         spec:
-          storageAccountSpec: 
-            kind: Storage
-            sku:
-              name: Standard_LRS
-              tier: Standard
+          forProvider:
+            accountKind: StorageV2
+            accountTier: Standard
+            accountReplicationType: LRS
       patches:
         - fromFieldPath: spec.parameters.storageAccountName
           toFieldPath: metadata.name

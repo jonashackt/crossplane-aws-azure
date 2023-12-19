@@ -50,11 +50,13 @@ Be sure to have kind, the package manager Helm and kubectl installed:
 brew install kind helm kubectl
 ```
 
+https://docs.crossplane.io/latest/cli/
+
 Also we should install the crossplane CLI
 
-```
-curl -sL https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh | sh
-sudo mv kubectl-crossplane /usr/local/bin
+```shell
+curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh" | sh
+sudo mv crossplane /usr/local/bin
 ```
 
 Now the `kubectl crossplane --help` command should be ready to use.
@@ -1388,7 +1390,24 @@ Testdrive with
 kubectl apply -f upbound/provider-azure-storage/claim.yaml
 ```
 
-Now have a look into the Azure Portal. Our Resource Group should show up:
+
+
+### Wait for the Azure ResourceGroup & Storage Account to become ready
+
+We can use the new `trace` command of the [`crossplane` CLI introduced in 1.14](https://blog.crossplane.io/crossplane-v1-14/) to have a look, what's going on with our Azure resources:
+
+```shell
+$ crossplane beta trace storageazure.crossplane.jonashackt.io/account
+NAME                                SYNCED   READY   STATUS                                                                                
+StorageAzure/account (default)      True     False   Waiting: ...resource claim is waiting for composite resource to become Ready          
+└─ XStorageAzure/account-g97s8      False    -       ReconcileError: ... "object": spec.forProvider.accountTier is a required parameter]   
+   ├─ Account/account4c8672f        -        -       Error: accounts.storage.azure.upbound.io "account4c8672f" not found                   
+   └─ ResourceGroup/rg-crossplane   -        -       Error: resourcegroups.azure.upbound.io "rg-crossplane" not found    
+```
+
+Ahh, so our Composition isn't crafted correctly. 
+
+To fix this, we need to have a look into the API docs at https://doc.crds.dev/github.com/upbound/provider-azure/storage.azure.upbound.io/Account/v1beta1@v0.38.2. After fixing our Composition and reapplying it together with the Claim, we can have a look into the Azure Portal. Our Resource Group should show up:
 
 ![azure-console-resourcegroup](screenshots/azure-console-resourcegroup.png)
 
