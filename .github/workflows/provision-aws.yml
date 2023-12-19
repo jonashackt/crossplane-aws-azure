@@ -11,7 +11,7 @@ env:
   AWS_DEFAULT_REGION: 'eu-central-1'
 
 jobs:
-  fireup-crossplane-provision-aws:
+  crossplane-provision-aws:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -92,7 +92,7 @@ jobs:
           echo "### Show some debug info"
           kubectl get crossplane 
 
-          echo "### Wait until Claim & XR (Composite) are ready (giving it 6mins, since resources consumption of the AWS Upbound provider seems to be way higher than the classic one)"
+          echo "### Wait until Claim & XR (Composite) are ready (giving it 6mins, since resources consumption of the AWS Upbound provider seems to be way higher than the crossplane-contrib one)"
           kubectl wait --for=condition=ready --timeout=360s claim managed-upbound-s3
 
           echo "### Show crossplane overall status"

@@ -12,7 +12,7 @@ env:
   ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
 jobs:
-  fireup-crossplane-provision-azure:
+  crossplane-provision-azure:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -103,6 +103,9 @@ jobs:
 
           echo "### Giving the Azure Provider some time to create the resources"
           sleep 120s
+
+          echo "### Wait until Claim & XR (Composite) are ready (giving it 6mins, since resources consumption of the Azure Upbound provider seems to be way higher than the crossplane-contrib one)"
+          kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/account
 
           echo "### Wait until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane
