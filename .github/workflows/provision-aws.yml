@@ -61,15 +61,15 @@ jobs:
           kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
 
           echo "### Install the crossplane Upbound AWS S3 Provider Family"
-          kubectl apply -f provider-aws-s3/config/provider-aws.yaml
+          kubectl apply -f upbound/provider-aws-s3/config/provider-aws-s3.yaml
 
           kubectl get provider.pkg.crossplane.io
 
           echo "### Wait until AWS Provider is up and running"
-          kubectl wait --for=condition=healthy --timeout=180s provider/provider-aws
+          kubectl wait --for=condition=healthy --timeout=180s provider/provider-aws-s3
 
           echo "### Create ProviderConfig to consume the Secret containing AWS credentials"
-          kubectl apply -f provider-aws-s3/config/provider-config-aws.yaml
+          kubectl apply -f upbound/provider-aws-s3/config/provider-config-aws.yaml
 
           echo "### Get overall provider status"
           kubectl get provider
@@ -77,17 +77,17 @@ jobs:
       - name: Create XRD, Composition & Claim to create S3 Bucket (now using Upbound official AWS Provider Families)
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
-          kubectl apply -f provider-aws-s3/definition.yaml
+          kubectl apply -f upbound/provider-aws-s3/definition.yaml
           kubectl get xrd
           
           echo "### Wait for XRD to become Offered"
           kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 
           echo "### Create Composition"
-          kubectl apply -f provider-aws-s3/composition.yaml
+          kubectl apply -f upbound/provider-aws-s3/composition.yaml
 
           echo "### Create Claim, which should create S3 Bucket"
-          kubectl apply -f provider-aws-s3/claim.yaml
+          kubectl apply -f upbound/provider-aws-s3/claim.yaml
 
           echo "### Show some debug info"
           kubectl get crossplane 
@@ -112,7 +112,7 @@ jobs:
           aws s3 rm "s3://$BUCKET_NAME/index.html"
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
-          kubectl delete -f provider-aws-s3/claim.yaml
+          kubectl delete -f upbound/provider-aws-s3/claim.yaml
 
           echo "### Give the deletion process some time by having a look into the crossplane status"
           kubectl get crossplane 
