@@ -31,7 +31,7 @@ jobs:
           echo "### Let's try to access our kind cluster via kubectl"
           kubectl get nodes
       
-      - name: Install crossplane via Helm
+      - name: Install crossplane via Helm & install crossplane CLI
         run: |
           echo "### Create a namespace for crossplane"
           kubectl create namespace crossplane-system
@@ -39,6 +39,10 @@ jobs:
           echo "### Install crossplane via Helm"
           helm dependency update crossplane-install
           helm upgrade --install crossplane --namespace crossplane-system crossplane-install
+
+          echo "### Install crossplane CLI"
+          curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh" | sh
+          sudo mv crossplane /usr/local/bin
 
       - name: Check crossplane status
         run: |
@@ -89,14 +93,20 @@ jobs:
           echo "### Create Claim, which should create S3 Bucket"
           kubectl apply -f upbound/provider-aws-s3/claim.yaml
 
-          echo "### Show some debug info"
+          echo "### Show crossplane overall status"
           kubectl get crossplane 
+
+          echo "### Giving the AWS Provider 30s to create the resources"
+          sleep 30s
+
+          echo "### Trace status of AWS S3 Bucket"
+          crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 
           echo "### Wait until Claim & XR (Composite) are ready (giving it 6mins, since resources consumption of the AWS Upbound provider seems to be way higher than the crossplane-contrib one)"
           kubectl wait --for=condition=ready --timeout=360s claim managed-upbound-s3
 
-          echo "### Show crossplane overall status"
-          kubectl get crossplane 
+          echo "### Trace status of AWS S3 Bucket"
+          crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 
       - name: Upload index.html to S3 and check deployment works
         run: |
