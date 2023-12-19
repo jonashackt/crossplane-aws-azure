@@ -96,9 +96,6 @@ jobs:
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
-          echo "### Giving the AWS Provider 30s to create the resources"
-          sleep 30s
-
           echo "### Trace status of AWS S3 Bucket"
           crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 
