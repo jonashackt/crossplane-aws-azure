@@ -10,7 +10,7 @@ Example project showing how to get started with Crossplane, connect it to multip
 
 Also it is used as an example in these two [iX Magazin](https://www.heise.de/ix/) issues (simply click on the magazine covers to access the full articles):
 
-[![](screenshots/ixmagazin_frontcover_02_2023.png)](https://www.codecentric.de/wissens-hub/fachmedien/crossplane-gitops-fuer-die-multi-cloud) [![](screenshots/ixmagazin_frontcover_03_2023.png)](https://www.codecentric.de/wissen/publikation/crossplane-provisionierung-in-aws-und-azure)
+[![](screenshots/ixmagazin_frontcover_02_2023.png)](https://www.codecentric.de/wissens-hub/fachmedien/crossplane-gitops-fuer-die-multi-cloud) [![](screenshots/ixmagazin_frontcover_03_2023.png)](https://www.codecentric.de/wissen/publikation/crossplane-provisionierung-in-aws-und-azure) ![](screenshots/ix_developer_autumn_2023.png)
 
 Crossplane https://crossplane.io/ claims to be the "The cloud native control plane framework". It introduces a new way how to manage any cloud resource (beeing it Kubernetes-native or not). It's an alternative Infrastructure-as-Code tooling to Terraform, AWS CDK/Bicep or Pulumi and introduces a higher level of abstraction - based on Kubernetes CRDs. 
 
