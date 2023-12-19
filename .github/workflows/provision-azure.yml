@@ -32,7 +32,7 @@ jobs:
           echo "### Let's try to access our kind cluster via kubectl"
           kubectl get nodes
       
-      - name: Install crossplane via Helm
+      - name: Install crossplane via Helm & install crossplane CLI
         run: |
           echo "### Create a namespace for crossplane"
           kubectl create namespace crossplane-system
@@ -40,6 +40,10 @@ jobs:
           echo "### Install crossplane via Helm"
           helm dependency update crossplane-install
           helm upgrade --install crossplane --namespace crossplane-system crossplane-install
+
+          echo "### Install crossplane CLI"
+          curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh" | sh
+          sudo mv crossplane /usr/local/bin
 
       - name: Check crossplane status
         run: |
@@ -101,14 +105,17 @@ jobs:
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
-          echo "### Giving the Azure Provider some time to create the resources"
-          sleep 120s
+          echo "### Wait until ResourceGroup is ready"
+          kubectl wait --for=condition=ready --timeout=120s resourcegroup rg-crossplane
 
-          echo "### Wait until Claim & XR (Composite) are ready (giving it 6mins, since resources consumption of the Azure Upbound provider seems to be way higher than the crossplane-contrib one)"
-          kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/account
+          echo "### Trace status of Azure ResourceGroup & Storage Account"
+          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
 
-          echo "### Wait until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=120s resourcegroup.azure.crossplane.io/rg-crossplane
+          echo "### Wait until Claim & XR (Composite) are ready 
+          kubectl wait --for=condition=ready --timeout=120s storageazure.crossplane.jonashackt.io/managed-storage-account
+
+          echo "### Trace status of Azure ResourceGroup & Storage Account"
+          crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
 
       - name: Delete Resources
         run: |

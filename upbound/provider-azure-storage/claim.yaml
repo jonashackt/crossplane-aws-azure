@@ -3,7 +3,7 @@ apiVersion: crossplane.jonashackt.io/v1alpha1
 kind: StorageAzure
 metadata:
   namespace: default
-  name: account
+  name: managed-storage-account
 spec:
   compositionRef:
     name: storageazure-composition

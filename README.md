@@ -1329,11 +1329,10 @@ spec:
         kind: Account
         metadata: {}
         spec:
-          storageAccountSpec: 
-            kind: Storage
-            sku:
-              name: Standard_LRS
-              tier: Standard
+          forProvider:
+            accountKind: StorageV2
+            accountTier: Standard
+            accountReplicationType: LRS
       patches:
         - fromFieldPath: spec.parameters.storageAccountName
           toFieldPath: metadata.name
@@ -1373,14 +1372,14 @@ apiVersion: crossplane.jonashackt.io/v1alpha1
 kind: StorageAzure
 metadata:
   namespace: default
-  name: account
+  name: managed-storage-account
 spec:
   compositionRef:
     name: storageazure-composition
   parameters:
     location: West Europe
     resourceGroupName: rg-crossplane
-    storageAccountName: account4c8672e
+    storageAccountName: account4c8672f
 ```
 
 
@@ -1397,7 +1396,7 @@ kubectl apply -f upbound/provider-azure-storage/claim.yaml
 We can use the new `trace` command of the [`crossplane` CLI introduced in 1.14](https://blog.crossplane.io/crossplane-v1-14/) to have a look, what's going on with our Azure resources:
 
 ```shell
-$ crossplane beta trace storageazure.crossplane.jonashackt.io/account
+$ crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
 NAME                                SYNCED   READY   STATUS                                                                                
 StorageAzure/account (default)      True     False   Waiting: ...resource claim is waiting for composite resource to become Ready          
 └─ XStorageAzure/account-g97s8      False    -       ReconcileError: ... "object": spec.forProvider.accountTier is a required parameter]   
