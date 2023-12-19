@@ -105,9 +105,6 @@ jobs:
           echo "### Show crossplane overall status"
           kubectl get crossplane 
 
-          echo "### Giving the Azure Provider 30s to create the resources"
-          sleep 30s
-
           echo "### Trace status of Azure ResourceGroup & Storage Account"
           crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 
