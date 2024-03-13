@@ -1381,6 +1381,231 @@ Thoughworks Tech Radar: Assess https://www.thoughtworks.com/de-de/radar/tools/cr
 IONOS and crossplane https://docs.ionos.com/crossplane-provider/example
 
 
+
+### CRD examples
+
+https://github.com/upbound/platform-ref-s3-website
+
+
+
+### Show status of infrastructure components
+
+k8s event-log! `:events` and then scroll down to the newest events and have a (constant) look
+
+
+### Composition Updates
+
+https://docs.crossplane.io/knowledge-base/guides/composition-revisions/
+
+> If you have 10 PlatformDB XRs all using the big-platform-db Composition, all 10 of those XRs will be instantly updated in accordance with any updates you make to the big-platform-db Composition.
+
+So if we change a Composition, all the XRs will be updated - which we can see in the Kubernetes Events:
+
+>[](screenshots/update-composition-updates-external-resources.png)
+
+But be aware of this error:
+
+```shell
+cannot compose resources: cannot parse base template of composed resource "securitygrouprule-cluster-inbound": cannot change the kind or group of a composed resource from ec2.aws.upbound .io/v1beta1, Kind=SecurityGroupRule to ec2.aws.upbound.io/v1beta1, Kind=SecurityGroupIngressRule (possible composed resource template mismatch) 
+```
+
+See https://github.com/crossplane/crossplane/issues/1909
+
+
+
+If you don't want Composition updates, use:
+
+
+### Composition Revisions
+
+https://docs.crossplane.io/knowledge-base/guides/composition-revisions/
+
+Self-service via XRs - and a platform team, that manages the Composition:
+
+> Usually, in the interest of self-service, the Composition is managed by a different team from the actual PlatformDB XRs. For example the Composition may be written and maintained by a platform team member, while individual application teams create PlatformDB XRs that use said Composition.
+
+> Composition Revisions allow XRs to opt out of automatic updates.
+
+
+
+
+
+
+### Crossplane CRD Validation
+
+##### Install crossplane CLI
+
+https://github.com/crossplane/crossplane/releases/tag/v1.15.0
+
+> Enhancements to the Crossplane CLI: New subcommands like `crossplane beta validate` for schema validation, `crossplane beta top` for resource utilization views similar to `kubectl top pods`, and `crossplane beta convert` for converting resources to newer formats or configurations.
+
+Install crossplane CLI:
+
+```shell
+curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh" |sh
+```
+
+If that produces an error, try to manually craft the download link:
+
+```shell
+curl -sfLo crossplane "https://releases.crossplane.io/stable/v1.15.0/bin/linux_amd64/crank"
+sudo mv crossplane /usr/local/bin
+```
+
+Be sure to have the `v1.15.0` version installed as a minimum, otherwise the `crossplane beta validate` command won't work:
+
+```shell
+crossplane --version
+v1.15.0
+```
+
+### Validate XR or Claim against Composite Resource Definition
+
+Before using the command have a look at the command reference: https://docs.crossplane.io/latest/cli/command-reference/#beta-validate:
+
+> The crossplane beta validate command validates compositions against provider or XRD schemas using the Kubernetes API server’s validation library.
+
+So let's grab a `definition.yaml` and validate a `claim.yaml` against it:
+
+```shell
+crossplane beta validate --cache-dir ~/.crossplane definition.yaml claim.yaml
+[✓] crossplane.jonashackt.io/v1alpha1, Kind=ObjectStorage, managed-upbound-s3 validated successfully
+Total 1 resources: 0 missing schemas, 1 success cases, 0 failure cases
+```
+
+To prevent the command from polluting our projects with `.crossplane` directories, we should also provide a `--cache-dir ~/.crossplane` flag, which will deposit the directory in the user profile folder.
+
+
+### Validate Managed Resources against a Crossplane provider (family)
+
+We need to provide the provider's schemes.
+
+For example grab a Composition and validate it against the AWS provider:
+
+```shell
+crossplane beta validate --cache-dir ~/.crossplane config/provider-aws-s3.yaml resources/bucket.yaml
+package schemas does not exist, downloading:  xpkg.upbound.io/upbound/provider-aws-s3:v1.1.0
+[✓] s3.aws.upbound.io/v1beta1, Kind=Bucket, crossplane-argocd-s3-bucket validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketPublicAccessBlock, crossplane-argocd-s3-bucket-pab validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketOwnershipControls, crossplane-argocd-s3-bucket-osc validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketACL, crossplane-argocd-s3-bucket-acl validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketWebsiteConfiguration, crossplane-argocd-s3-bucket-websiteconf validated successfully
+Total 5 resources: 0 missing schemas, 5 success cases, 0 failure cases
+```
+
+
+##### Validate a full directory against XRDs or Provider schema
+
+We can also validate a full directory:
+
+```shell
+crossplane beta validate --cache-dir ~/.crossplane provider-aws-s3/definition.yaml provider-aws-s3
+[✓] crossplane.jonashackt.io/v1alpha1, Kind=ObjectStorage, managed-upbound-s3 validated successfully
+[!] could not find CRD/XRD for: apiextensions.crossplane.io/v1, Kind=Composition
+[!] could not find CRD/XRD for: pkg.crossplane.io/v1, Kind=Provider
+[!] could not find CRD/XRD for: aws.upbound.io/v1beta1, Kind=ProviderConfig
+[!] could not find CRD/XRD for: apiextensions.crossplane.io/v1, Kind=CompositeResourceDefinition
+[✓] s3.aws.upbound.io/v1beta1, Kind=Bucket, crossplane-argocd-s3-bucket validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketPublicAccessBlock, crossplane-argocd-s3-bucket-pab validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketOwnershipControls, crossplane-argocd-s3-bucket-osc validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketACL, crossplane-argocd-s3-bucket-acl validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketWebsiteConfiguration, crossplane-argocd-s3-bucket-websiteconf validated successfully
+Total 10 resources: 4 missing schemas, 6 success cases, 0 failure cases
+```
+
+
+```shell
+crossplane beta validate --cache-dir ~/.crossplane provider-aws-s3/config/provider-aws-s3.yaml provider-aws-s3
+[!] could not find CRD/XRD for: crossplane.jonashackt.io/v1alpha1, Kind=ObjectStorage
+[!] could not find CRD/XRD for: apiextensions.crossplane.io/v1, Kind=Composition
+[!] could not find CRD/XRD for: pkg.crossplane.io/v1, Kind=Provider
+[!] could not find CRD/XRD for: aws.upbound.io/v1beta1, Kind=ProviderConfig
+[!] could not find CRD/XRD for: apiextensions.crossplane.io/v1, Kind=CompositeResourceDefinition
+[✓] s3.aws.upbound.io/v1beta1, Kind=Bucket, crossplane-argocd-s3-bucket validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketPublicAccessBlock, crossplane-argocd-s3-bucket-pab validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketOwnershipControls, crossplane-argocd-s3-bucket-osc validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketACL, crossplane-argocd-s3-bucket-acl validated successfully
+[✓] s3.aws.upbound.io/v1beta1, Kind=BucketWebsiteConfiguration, crossplane-argocd-s3-bucket-websiteconf validated successfully
+Total 10 resources: 5 missing schemas, 5 success cases, 0 failure cases
+```
+
+
+
+
+##### beta render
+
+https://docs.crossplane.io/latest/cli/command-reference/#beta-render
+
+
+
+
+##### Composition Validation
+
+To be able to validate Compositions & XRs, we need another command in the game: `crossplane beta render`:
+
+https://docs.crossplane.io/latest/cli/command-reference/#validate-render-command-output
+
+> You can pipe the output of `crossplane beta render` into `crossplane beta validate` to validate complete Crossplane resource pipelines, including XRs, compositions and composition functions.
+
+Therefore we need to use the `--include-full-xr` command with `crossplane beta render` and the `-` option with `crossplane beta validate` like that:
+
+```shell
+crossplane beta render composition.yaml --include-full-xr | crossplane beta validate config/provider-aws-s3.yaml -
+```
+
+
+### Provider Upgrades
+
+Imagine a provider beeing configured like this:
+
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-ec2
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-ec2:v1.1.0
+  packagePullPolicy: Always
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+```
+
+Now if `provider-aws-ec2:v1.1.1` gets released, the `revisionActivationPolicy: Automatic` will lead to a automatically upgraded provider.
+
+This can be great - or it can lead to a sitation, where the new provider version doesn't work as expected (e.g. because it presents a https://docs.crossplane.io/latest/concepts/providers/#unhealthypackagerevision) - and thus beeing rolled back, also automatically. This could lead to a situation, where the provider gets unusable from time to time.
+
+Therefor it might be better to do the Provider upgrades in a GitOps fashion through a git commit (e.g. together with ArgoCD) and really commit a new version to the git repository. Therefore we also need to configure the `revisionActivationPolicy` to `manual` (see https://docs.crossplane.io/latest/concepts/providers/#revision-activation-policy):
+
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-ec2
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-ec2:v1.1.0
+  packagePullPolicy: Always
+  revisionActivationPolicy: Manual
+  revisionHistoryLimit: 1
+```
+
+
+
+### End-2-End tests 
+
+With `uptest` and `kuttl`:
+
+https://github.com/upbound/platform-ref-s3-website/blob/main/Makefile
+
+
+
+### How does Patching work?
+
+https://github.com/awslabs/crossplane-on-eks?tab=readme-ov-file#features
+
+https://github.com/awslabs/crossplane-on-eks/blob/main/doc/patching-101.md
+
+
+
 ### Stacks now called Packages
 
 https://github.com/crossplane/crossplane/blob/master/design/design-doc-composition.md
