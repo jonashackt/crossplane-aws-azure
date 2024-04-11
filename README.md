@@ -1,6 +1,9 @@
 # crossplane-aws-azure
 [![Build Status AWS](https://github.com/jonashackt/crossplane-aws-azure/workflows/provision-aws/badge.svg)](https://github.com/jonashackt/crossplane-aws-azure/actions/workflows/provision-aws.yml)
 [![Build Status Azure](https://github.com/jonashackt/crossplane-aws-azure/workflows/provision-azure/badge.svg)](https://github.com/jonashackt/crossplane-aws-azure/actions/workflows/provision-azure.yml)
+![crossplane-version](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fjonashackt%2Fcrossplane-aws-azure%2Fmain%2Fcrossplane-install%2FChart.yaml&query=%24.dependencies%5B%3A1%5D.version&label=crossplane&color=blue)
+![provider-aws-s3](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fjonashackt%2Fcrossplane-aws-azure%2Fmain%2Fupbound%2Fprovider-aws-s3%2Fconfig%2Fprovider-aws-s3.yaml&query=%24.spec.package&label=provider-aws-s3&color=rgb(109%2C%20100%2C%20245))
+![provider-azure-storage](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fjonashackt%2Fcrossplane-aws-azure%2Fmain%2Fupbound%2Fprovider-azure-storage%2Fconfig%2Fprovider-azure-storage.yaml&query=%24.spec.package&label=provider-azure-storage&color=rgb(109%2C%20100%2C%20245))
 [![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/crossplane-aws-azure/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
