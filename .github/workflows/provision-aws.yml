@@ -4,7 +4,8 @@ on: [push]
 
 env:
   KIND_NODE_VERSION: v1.29.2
-  BUCKET_NAME: spring2024-bucket
+  # Using branch unique name for our bucket to prevent interfering jobs
+  BUCKET_NAME: spring2024-bucket-${{ github.ref_name }}
   # AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -69,6 +70,7 @@ jobs:
           echo "### Get overall provider status"
           kubectl get provider
 
+      # Not using kubectl apply -f upbound/provider-aws-s3/claim.yaml currently to prevent jobs from interfering with each other
       - name: Create XRD, Composition & Claim to create S3 Bucket (now using Upbound official AWS Provider Families)
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
@@ -81,8 +83,20 @@ jobs:
           echo "### Create Composition"
           kubectl apply -f upbound/provider-aws-s3/composition.yaml
 
-          echo "### Create Claim, which should create S3 Bucket"
-          kubectl apply -f upbound/provider-aws-s3/claim.yaml
+          echo "### Create Claim, which should create S3 Bucket (inline here to prevent jobs from interfering with each other)"
+          kubectl apply -f - <<EOF
+          apiVersion: crossplane.jonashackt.io/v1alpha1
+          kind: ObjectStorage
+          metadata:
+            namespace: default
+            name: managed-upbound-s3
+          spec:
+            compositionRef:
+              name: objectstorage-composition
+            parameters:
+              bucketName: "spring2024-bucket-$BUCKET_NAME"
+              region: eu-central-1
+          EOF
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
