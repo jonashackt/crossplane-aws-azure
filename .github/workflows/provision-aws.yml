@@ -33,12 +33,9 @@ jobs:
       
       - name: Install crossplane via Helm & install crossplane CLI
         run: |
-          echo "### Create a namespace for crossplane"
-          kubectl create namespace crossplane-system
-
           echo "### Install crossplane via Helm"
           helm dependency update crossplane-install
-          helm upgrade --install crossplane --namespace crossplane-system crossplane-install
+          helm upgrade --install crossplane --namespace crossplane-system crossplane-install --create-namespace
 
           echo "### Install crossplane CLI"
           curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh" | sh

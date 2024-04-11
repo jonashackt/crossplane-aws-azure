@@ -75,20 +75,14 @@ The Crossplane docs tell us to use Helm for installation:
 
 https://crossplane.io/docs/v1.8/getting-started/install-configure.html#install-crossplane
 
-but create the namespace first:
-
-```shell
-kubectl create namespace crossplane-system
-```
-
-and than:
-
 ```shell
 helm repo add crossplane-stable https://charts.crossplane.io/stable
 helm repo update
 
-helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane
+helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane --create-namespace
 ```
+
+Using the appended `--create-namespace`, we don't need to explicitely create the namespace before running `helm upgrade`.
 
 As an Renovate-powered alternative we can [create our own simple [Chart.yaml](crossplane-install/Chart.yaml) to enable automatic updates](https://stackoverflow.com/a/71765472/4964553) of our installation if new crossplane versions get released:
 
@@ -1428,6 +1422,10 @@ Self-service via XRs - and a platform team, that manages the Composition:
 
 
 
+### Troubleshooting
+
+https://docs.crossplane.io/knowledge-base/guides/troubleshoot/
+
 
 
 
@@ -1532,9 +1530,11 @@ Total 10 resources: 5 missing schemas, 5 success cases, 0 failure cases
 
 
 
-##### beta render
+##### beta render: kind of Unit tests
 
 https://docs.crossplane.io/latest/cli/command-reference/#beta-render
+
+https://blog.crossplane.io/building-crossplane-composition-functions-to-empower-your-control-plane/
 
 
 
@@ -1587,6 +1587,13 @@ spec:
   revisionActivationPolicy: Manual
   revisionHistoryLimit: 1
 ```
+
+
+### Readiness checks
+
+https://docs.crossplane.io/latest/concepts/compositions/#resource-readiness-checks
+
+https://docs.crossplane.io/latest/concepts/compositions/#match-a-boolean
 
 
 
