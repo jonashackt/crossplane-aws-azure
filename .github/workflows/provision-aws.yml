@@ -94,7 +94,7 @@ jobs:
             compositionRef:
               name: objectstorage-composition
             parameters:
-              bucketName: "spring2024-bucket-$BUCKET_NAME"
+              bucketName: "$BUCKET_NAME"
               region: eu-central-1
           EOF
 
