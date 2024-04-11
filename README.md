@@ -1655,4 +1655,98 @@ https://github.com/crossplane/crossplane/blob/master/design/design-doc-compositi
 
 https://kuttl.dev/
 
-example: https://github.com/aws-samples/crossplane-aws-blueprints/blob/main/tests/kuttl/test-suite.yaml
+example: https://github.com/jonashackt/crossplane-kuttl
+
+
+# GitHub Actions recommendations
+
+A good advice is to use unique bucket names based on the branch to prevent interfering jobs with each other. Otherwise a Renovate enabled Crossplane project using real Cloud resources will create multiple crashed jobs in a row. 
+
+But we also need to split out the branch name, see https://stackoverflow.com/a/73467112/4964553
+otherwise we'll run into errors like: 
+
+```shell
+compose resources: cannot associate composed resources with Composition resource templates: cannot get composed resource: invalid resource name "spring2024-bucket-renovate/xpkg.upbound.io-upbound-provider-aws-s3-1.x": [may not contain '/']'
+```
+
+Therefore I created a `BUCKET_NAME` variable and ` Split branch name` step which uses the predefined `{{ github.ref_name }}' containing the branch name with often with a slash (when they are opened by Renovate for example):
+
+```yaml
+name: provision-aws
+
+on: [push]
+
+env:
+  KIND_NODE_VERSION: v1.29.2
+  BUCKET_NAME: spring2024-bucket
+  # AWS
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: 'eu-central-1'
+
+jobs:
+  crossplane-provision-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+
+      # Using branch unique name for our bucket to prevent interfering jobs
+      # But we need to split out the branch name, see https://stackoverflow.com/a/73467112/4964553
+      # otherwise we'll run into errors like: 'compose resources: cannot associate composed resources with Composition resource templates: cannot get composed resource: invalid resource name "spring2024-bucket-renovate/xpkg.upbound.io-upbound-provider-aws-s3-1.x": [may not contain '/']'
+      - name: Split branch name
+        env:
+          BRANCH: ${{ github.ref_name }}
+        id: split
+        run: echo "::set-output name=branchbucketsuffix::${BRANCH##*/}"
+```
+
+Later I create a inline Claim instead of using the yaml file to be able to override the bucket name dynamically:
+
+```yaml
+      # Not using kubectl apply -f upbound/provider-aws-s3/claim.yaml currently to prevent jobs from interfering with each other
+      - name: Create XRD, Composition & Claim to create S3 Bucket (now using Upbound official AWS Provider Families)
+        run: |
+          ...
+
+          echo "### Create Claim, which should create S3 Bucket (inline here to prevent jobs from interfering with each other)"
+          kubectl apply -f - <<EOF
+          apiVersion: crossplane.jonashackt.io/v1alpha1
+          kind: ObjectStorage
+          metadata:
+            namespace: default
+            name: managed-upbound-s3
+          spec:
+            compositionRef:
+              name: objectstorage-composition
+            parameters:
+              bucketName: "$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}"
+              region: eu-central-1
+          EOF
+
+          ...
+```
+
+Now in AWS console we can watch Renovate doing it's work without interfering with other branches:
+
+![](screenshots/multiple-buckets-based-on-branch-names.png)
+
+
+And finally we need to use the bucket name also when we interact with AWS S3:
+
+```yaml
+      - name: Upload index.html to S3 and check deployment works
+        run: |
+          echo "### Upload index.html to Bucket via AWS CLI"
+          aws s3 sync static "s3://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}" --acl public-read
+
+          echo "### Access S3 Bucket static website"
+          curl "http://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}.s3-website.eu-central-1.amazonaws.com"
+
+      - name: Delete index.html and remove Claim for S3 Bucket deletion
+        run: |
+          echo "### Delete index.html from S3 Bucket"
+          aws s3 rm "s3://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}/index.html"
+
+          ...
+```
