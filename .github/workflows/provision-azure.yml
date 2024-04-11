@@ -123,7 +123,7 @@ jobs:
           crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 
           echo "### Wait until ResourceGroup is ready"
-          kubectl wait --for=condition=ready --timeout=120s resourcegroup "$RG_NAME-${{ steps.split.outputs.branchbucketsuffix }}"
+          kubectl wait --for=condition=ready --timeout=180s resourcegroup "$RG_NAME-${{ steps.split.outputs.branchbucketsuffix }}"
 
           echo "### Wait 3 mins until Claim & XR (Composite) are ready"
           kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/managed-storage-account
