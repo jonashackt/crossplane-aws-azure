@@ -4,8 +4,7 @@ on: [push]
 
 env:
   KIND_NODE_VERSION: v1.29.2
-  # Using branch unique name for our bucket to prevent interfering jobs
-  BUCKET_NAME: spring2024-bucket-${{ github.ref_name }}
+  BUCKET_NAME: spring2024-bucket
   # AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -17,6 +16,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@master
+
+      # Using branch unique name for our bucket to prevent interfering jobs
+      # But we need to split out the branch name, see https://stackoverflow.com/a/73467112/4964553
+      # otherwise we'll run into errors like: 'compose resources: cannot associate composed resources with Composition resource templates: cannot get composed resource: invalid resource name "spring2024-bucket-renovate/xpkg.upbound.io-upbound-provider-aws-s3-1.x": [may not contain '/']'
+      - name: Split branch name
+        env:
+          BRANCH: ${{ github.ref_name }}
+        id: split
+        run: echo "::set-output name=branchbucketsuffix::${BRANCH##*/}"
 
       - name: Spin up kind
         run: |
@@ -94,7 +102,7 @@ jobs:
             compositionRef:
               name: objectstorage-composition
             parameters:
-              bucketName: "$BUCKET_NAME"
+              bucketName: "$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}"
               region: eu-central-1
           EOF
 
@@ -113,15 +121,15 @@ jobs:
       - name: Upload index.html to S3 and check deployment works
         run: |
           echo "### Upload index.html to Bucket via AWS CLI"
-          aws s3 sync static "s3://$BUCKET_NAME" --acl public-read
+          aws s3 sync static "s3://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}" --acl public-read
 
           echo "### Access S3 Bucket static website"
-          curl "http://$BUCKET_NAME.s3-website.eu-central-1.amazonaws.com"
+          curl "http://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}.s3-website.eu-central-1.amazonaws.com"
 
       - name: Delete index.html and remove Claim for S3 Bucket deletion
         run: |
           echo "### Delete index.html from S3 Bucket"
-          aws s3 rm "s3://$BUCKET_NAME/index.html"
+          aws s3 rm "s3://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}/index.html"
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
           kubectl delete -f upbound/provider-aws-s3/claim.yaml
