@@ -3,7 +3,7 @@ kind: Provider
 metadata:
   name: provider-aws
 spec:
-  package: crossplanecontrib/provider-aws:v0.44.2
+  package: crossplanecontrib/provider-aws:v0.47.1
   packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
