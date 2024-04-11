@@ -278,7 +278,7 @@ Install it via `kubectl`:
 kubectl apply -f upbound/provider-aws-s3/config/provider-aws-s3.yaml
 ```
 
-The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. I'am not sure, if the Crossplane team will provide an installation method where we can use tools like Renovate to keep our Crossplane providers up to date. A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
+The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. ~~I'am not sure, if the Crossplane team will provide an installation method where we can use tools like Renovate to keep our Crossplane providers up to date~~ (now Renovate supports Crossplane, see paragraph `Provider & Configuration Package Upgrades with Renovate`). A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
 
 ```shell
 $ kubectl get crossplane
@@ -1574,7 +1574,7 @@ Now if `provider-aws-ec2:v1.1.1` gets released, the `revisionActivationPolicy: A
 
 This can be great - or it can lead to a sitation, where the new provider version doesn't work as expected (e.g. because it presents a https://docs.crossplane.io/latest/concepts/providers/#unhealthypackagerevision) - and thus beeing rolled back, also automatically. This could lead to a situation, where the provider gets unusable from time to time.
 
-Therefor it might be better to do the Provider upgrades in a GitOps fashion through a git commit (e.g. together with ArgoCD) and really commit a new version to the git repository. Therefore we also need to configure the `revisionActivationPolicy` to `manual` (see https://docs.crossplane.io/latest/concepts/providers/#revision-activation-policy):
+If we want to do Provider upgrades in a GitOps fashion through a git commit to a git repository, we should configure the `packagePullPolicy` to `IfNotPresent` instead of `Always` (which means " Check for new packages every minute and download any matching package that isn’t in the cache", see https://docs.crossplane.io/master/concepts/packages/#configuration-package-pull-policy) - BUT leave the `revisionActivationPolicy` to `Automatic`! Since otherwise, the Provider will never get active and healty! See https://docs.crossplane.io/master/concepts/packages/#revision-activation-policy), but I didn't find it documented that way!
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
@@ -1583,10 +1583,36 @@ metadata:
   name: provider-aws-ec2
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-ec2:v1.1.0
-  packagePullPolicy: Always
-  revisionActivationPolicy: Manual
+  packagePullPolicy: IfNotPresent # Only download the package if it isn’t in the cache.
+  revisionActivationPolicy: Automatic # Otherwise our Provider never gets activate & healthy
   revisionHistoryLimit: 1
 ```
+
+#### Provider & Configuration Package Upgrades with Renovate
+
+Renovate supports Crossplane by the end of November 2023:
+
+* https://github.com/renovatebot/renovate/discussions/22363
+* merged PR https://github.com/renovatebot/renovate/pull/25911 & docs https://github.com/renovatebot/renovate/pull/25911/commits/d224eaeaee0283282d54bc86e2b7f3e7100de455
+
+The Renovate docs tell us how we can configure Crossplane support:
+
+https://docs.renovatebot.com/modules/manager/crossplane/
+
+> To use the crossplane manager you must set your own fileMatch pattern. The crossplane manager has no default fileMatch pattern, because there is no common filename or directory name convention for Crossplane YAML files. The crossplane manager supports these depTypes: configuration, function, provider
+
+So we always need to explicitely configure Renovate to let it handle our Crossplane Provider & Configuration Package updates for us!
+
+The simplest configuration would be:
+
+```yaml
+"crossplane": {
+    "fileMatch": ["\\.yaml$"]
+  }
+```
+
+It makes sense, if most of the files are for Crossplane.
+
 
 
 ### Readiness checks

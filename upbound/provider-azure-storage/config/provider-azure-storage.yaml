@@ -1,9 +1,9 @@
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: provider-azure-storage
+  name: upbound-provider-azure-storage
 spec:
-  package: xpkg.upbound.io/upbound/provider-azure-storage:v0.39.0
+  package: xpkg.upbound.io/upbound/provider-azure-storage:v1.0.0
   packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
