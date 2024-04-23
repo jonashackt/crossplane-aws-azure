@@ -1,4 +1,3 @@
----
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
@@ -25,6 +24,7 @@ spec:
     name: objectstorage-composition
 
   versions:
+  # This version should only change, when the parameters defined also change - and thus create a new version
   - name: v1alpha1
     served: true
     referenceable: true

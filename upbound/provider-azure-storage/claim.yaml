@@ -1,4 +1,3 @@
----
 apiVersion: crossplane.jonashackt.io/v1alpha1
 kind: StorageAzure
 metadata:

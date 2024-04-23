@@ -22,7 +22,7 @@ Literally the best intro post to Crossplane for me was https://blog.crossplane.i
 
 # Crossplane basic concepts
 
-https://crossplane.io/docs/v1.8/concepts/overview.html
+https://docs.crossplane.io/latest/concepts/
 
 * [Managed Resourced (MR)](https://crossplane.io/docs/v1.8/concepts/managed-resources.html): Kubernetes custom resources (CRDs) that represent infrastructure primitives (mostly in cloud providers). All Crossplane Managed Resources could be found via https://doc.crds.dev/ 
 * [Composite Resources (XR)](https://crossplane.io/docs/v1.8/concepts/composition.html): compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by:
@@ -68,24 +68,27 @@ Now the `kubectl crossplane --help` command should be ready to use.
 Now spin up a local kind cluster
 
 ```shell
-kind create cluster --image kindest/node:v1.29.0 --wait 5m
+kind create cluster --image kindest/node:v1.29.2 --wait 5m
 ```
 
 
 ## Install Crossplane with Helm
 
-The Crossplane docs tell us to use Helm for installation:
+### Plain via Helm
 
-https://crossplane.io/docs/v1.8/getting-started/install-configure.html#install-crossplane
+The Crossplane docs [tell us to use Helm for installation](https://docs.crossplane.io/latest/software/install/):
 
 ```shell
 helm repo add crossplane-stable https://charts.crossplane.io/stable
 helm repo update
 
-helm upgrade --install crossplane --namespace crossplane-system crossplane-stable/crossplane --create-namespace
+helm upgrade --install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane
 ```
 
 Using the appended `--create-namespace`, we don't need to explicitely create the namespace before running `helm upgrade`.
+
+
+### Renovate-powered installation via local Helm Chart
 
 As an Renovate-powered alternative we can [create our own simple [Chart.yaml](crossplane-install/Chart.yaml) to enable automatic updates](https://stackoverflow.com/a/71765472/4964553) of our installation if new crossplane versions get released:
 
@@ -98,17 +101,26 @@ appVersion: 0.0.0 # unused
 dependencies:
   - name: crossplane
     repository: https://charts.crossplane.io/stable
-    version: 1.14.4
+    version: 1.15.1
 ```
 
 To install Crossplane using our own `Chart.yaml` simply run:
 
 ```shell
 helm dependency update crossplane-install
-helm upgrade --install crossplane --namespace crossplane-system crossplane-install
+helm upgrade --install crossplane --namespace crossplane-system crossplane-install --create-namespace
 ```
 
 Be sure to exclude `charts` and `Chart.lock` files via [.gitignore](.gitignore).
+
+```shell
+# Exclude Helm charts lock and packages
+**/**/charts
+**/**/Chart.lock
+```
+
+
+### Check Crossplane installation
 
 Check Crossplane version installed with `helm list -n crossplane-system` :
 
@@ -139,6 +151,9 @@ NAME                                           READY   STATUS    RESTARTS   AGE
 pod/crossplane-7c88c45998-d26wl                1/1     Running   0          69s
 pod/crossplane-rbac-manager-8466dfb7fc-db9rb   1/1     Running   0          69s
 
+NAME                                     TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/crossplane-webhooks              ClusterIP   10.96.160.156   <none>        9443/TCP   4d
+
 NAME                                      READY   UP-TO-DATE   AVAILABLE   AGE
 deployment.apps/crossplane                1/1     1            1           69s
 deployment.apps/crossplane-rbac-manager   1/1     1            1           69s
@@ -147,6 +162,10 @@ NAME                                                 DESIRED   CURRENT   READY  
 replicaset.apps/crossplane-7c88c45998                1         1         1       69s
 replicaset.apps/crossplane-rbac-manager-8466dfb7fc   1         1         1       69s
 ```
+
+
+> "The base Crossplane installation consists of two pods, the crossplane pod and the crossplane-rbac-manager pod. Before starting the core Crossplane container an init container runs. The init container installs the core Crossplane Custom Resource Definitions (CRDs), configures Crossplane webhooks and installs any supplied Providers or Configurations."" See https://docs.crossplane.io/latest/concepts/pods/
+
 
 Now we should be able to find some new Kubernetes API objects:
 
@@ -175,50 +194,7 @@ storeconfigs                                            secrets.crossplane.io/v1
 
 # Configure Crossplane to access AWS
 
-https://docs.crossplane.io/v1.14/getting-started/provider-aws/
-
-
-### Create aws-creds.conf file
-
-https://docs.crossplane.io/latest/getting-started/provider-aws/#generate-an-aws-key-pair-file
-
-I assume here that you have [aws CLI installed and configured](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html). So that the command `aws configure` should work on your system. With this prepared we can create an `aws-creds.conf` file:
-
-```shell
-echo "[default]
-aws_access_key_id = $(aws configure get aws_access_key_id)
-aws_secret_access_key = $(aws configure get aws_secret_access_key)
-" > aws-creds.conf
-```
-
-> Don't ever check this file into source control - it holds your AWS credentials! For this repository I added `*-creds.conf` to the [.gitignore](.gitignore) file. 
-
-If you're using a CI system like GitHub Actions (as this repository is based on), you need to have both `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` configured as Repository Secrets:
-
-![github-actions-secrets](screenshots/github-actions-secrets.png)
-
-Also make sure to have your `Default region` configured locally - or as a `env:` variable in your CI system. All three needed variables [in GitHub Actions](.github/workflows/provision.yml) for example look like this:
-
-```yaml
-env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_DEFAULT_REGION: 'eu-central-1'
-```
-
-
-### Create AWS Provider secret
-
-Now we need to use the `aws-creds.conf` file to create the Crossplane AWS Provider secret:
-
-```
-kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
-```
-
-If everything went well there should be a new `aws-creds` Secret ready:
-
-![provider-aws-secret](screenshots/provider-aws-secret.png)
-
+https://docs.crossplane.io/latest/getting-started/provider-aws/
 
 
 ### Choosing a Crossplane AWS Provider
@@ -228,7 +204,7 @@ Currently there are two crossplane providers for AWS:
 * https://github.com/crossplane-contrib/provider-aws (legacy now)
 * https://github.com/upbound/provider-aws
 
-The first is written "by hand" and supports around 193 Managed Resources and the other is generated using Upjet supporting the full AWS API with 924 Managed Resources. 
+The first is written "by hand" and supports around 200 Managed Resources and the other is generated using Upjet supporting the full AWS API with 924 Managed Resources. 
 
 The second provider, which is also called the Upbound "official" provider has been donated to the OpenSource community in September 2023 - so there are now 2 OpenSource providers for AWS. 
 
@@ -254,19 +230,13 @@ So head over to [the Upbound marketplace](https://marketplace.upbound.io/) and s
 
 https://marketplace.upbound.io/providers/upbound/provider-aws-s3
 
-Now before configuring the Upbound Provider, be sure to have the `aws-creds.conf` file in place and the provider secret created (as described in [Create aws-creds.conf file](#create-aws-credsconf-file) & [Create AWS Provider secret](#create-aws-provider-secret)):
-
-```shell
-kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
-```
-
-With the secret in place we can install the Upbound AWS Provider. Therefore the [upbound/provider-aws-s3/config/provider-aws-s3.yaml](upbound/provider-aws-s3/config/provider-aws-s3.yaml) looks only slightly different compared to the classic AWS Provider - only the `spec.package` changed:
+Now we can install the Upbound AWS Provider. Therefore the [upbound/provider-aws-s3/config/provider-aws-s3.yaml](upbound/provider-aws-s3/config/provider-aws-s3.yaml) looks only slightly different compared to the classic AWS Provider - only the `spec.package` changed:
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: provider-aws-s3
+  name: upbound-provider-aws-s3
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-s3:v0.46.0
   packagePullPolicy: Always
@@ -281,21 +251,23 @@ Install it via `kubectl`:
 kubectl apply -f upbound/provider-aws-s3/config/provider-aws-s3.yaml
 ```
 
-The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. ~~I'am not sure, if the Crossplane team will provide an installation method where we can use tools like Renovate to keep our Crossplane providers up to date~~ (now Renovate supports Crossplane, see paragraph `Provider & Configuration Package Upgrades with Renovate`). A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
+The `package` version in combination with the `packagePullPolicy` configuration here is crucial, since we can configure an update strategy for the Provider here. ~~I'am not sure, if the Crossplane team will provide an installation method where we can use tools like Renovate to keep our Crossplane providers up to date~~ (now Renovate supports Crossplane, see paragraph `Provider & Configuration Package Upgrades with Renovate`). A full table of all possible fields can be found in the docs: https://crossplane.io/docs/v1.8/concepts/packages.html#specpackagepullpolicy We can also let crossplane itself manage new versions for us. But we also leave the GitOps way here!
+
+Multiple Provider Package revisions can also be installed at the same time (especially when using `packagePullPolicy: Always`). If you installed multiple package versions, you'll see them as `providerrevision.pkg.x` when running `kubectl get crossplane`:
 
 ```shell
 $ kubectl get crossplane
 ...
-NAME                                                           HEALTHY   REVISION   IMAGE                             STATE      DEP-FOUND   DEP-INSTALLED   AGE
-providerrevision.pkg.crossplane.io/provider-aws-2189bc61e0bd   True      1          crossplanecontrib/provider-aws:v0.33.0   Inactive                               6d22h
-providerrevision.pkg.crossplane.io/provider-aws-d87796863f95   True      2          crossplanecontrib/provider-aws:v0.34.0   Active                                 43h
+NAME                                                                             HEALTHY   REVISION   IMAGE                                                   STATE      DEP-FOUND   DEP-INSTALLED   AGE
+providerrevision.pkg.crossplane.io/upbound-provider-aws-s3-4c95b368de88          True      1          xpkg.upbound.io/upbound/provider-aws-s3:v1.2.1          Active     1           1               3d23h
+providerrevision.pkg.crossplane.io/upbound-provider-aws-s3-d6a6663caff3          True      1          xpkg.upbound.io/upbound/provider-aws-s3:v1.1.0          Inactive   1           1               5d22h
 ...
 ```
 
-Now our first Crossplane Provider has been installed. We need to wait for the Provider to become healthy:
+As our first Crossplane Provider has been installed. We need to wait for the Provider to become healthy:
 
 ```shell
-kubectl wait "providers.pkg.crossplane.io/provider-aws-s3" --for=condition=Healthy --timeout=180s
+kubectl wait "providers.pkg.crossplane.io/upbound-provider-aws-s3" --for=condition=Healthy --timeout=180s
 ```
 
 Obtain the status via `kubectl get provider.pkg.crossplane.io`:
@@ -303,11 +275,60 @@ Obtain the status via `kubectl get provider.pkg.crossplane.io`:
 ```shell
 $ kubectl get provider.pkg.crossplane.io
 NAME                          INSTALLED   HEALTHY   PACKAGE                                               AGE
-provider-aws-s3               True        True      xpkg.upbound.io/upbound/provider-aws-s3:v0.46.0       113s
+upbound-provider-aws-s3       True        True      xpkg.upbound.io/upbound/provider-aws-s3:v0.46.0       113s
 upbound-provider-family-aws   True        True      xpkg.upbound.io/upbound/provider-family-aws:v0.46.0   108s
 ```
 
 Otherwise we may run into errors like this when applying the `ProviderConfig` right after the Provider.
+
+
+
+
+### Create aws-creds.conf file
+
+I assume here that you have [aws CLI installed and configured](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html). So that the command `aws configure` should work on your system.
+
+With this prepared [we can create an `aws-creds.conf` file](https://docs.crossplane.io/latest/getting-started/provider-aws/#generate-an-aws-key-pair-file):
+
+```shell
+echo "[default]
+aws_access_key_id = $(aws configure get aws_access_key_id)
+aws_secret_access_key = $(aws configure get aws_secret_access_key)
+" > aws-creds.conf
+```
+
+> Don't ever check this file into source control - it holds your AWS credentials! Add it to your [.gitignore](.gitignore) file right now:
+
+```shell
+# Exclude credential configuration files like aws-creds.conf
+*-creds.conf
+```
+
+If you're using a CI system like GitHub Actions (as this repository is based on), you need to have both `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` configured as Repository Secrets:
+
+![github-actions-secrets](screenshots/github-actions-secrets.png)
+
+Also make sure to have your `Default region` configured locally - or as a `env:` variable in your CI system. All three needed variables [in GitHub Actions](.github/workflows/provision.yml) for example look like this:
+
+```yaml
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: 'eu-central-1'
+```
+
+
+### Create AWS Provider secret
+
+Now we need to use the `aws-creds.conf` file to create the Crossplane AWS Provider secret:
+
+```shell
+kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
+```
+
+If everything went well there should be a new `aws-creds` Secret ready:
+
+![provider-aws-secret](screenshots/provider-aws-secret.png)
 
 
 
@@ -348,15 +369,16 @@ $ kubectl get crossplane
 NAME                                    AGE
 providerconfig.aws.upbound.io/default   55s
 
-NAME                                                           HEALTHY   REVISION   IMAGE                                          STATE    DEP-FOUND   DEP-INSTALLED   AGE
-providerrevision.pkg.crossplane.io/provider-aws-6acd9324f315   True      1          xpkg.upbound.io/upbound/provider-aws:v0.34.0   Active                               17m
+NAME                                                                             HEALTHY   REVISION   IMAGE                                                   STATE      DEP-FOUND   DEP-INSTALLED   AGE
+providerrevision.pkg.crossplane.io/upbound-provider-aws-s3-4c95b368de88          True      1          xpkg.upbound.io/upbound/provider-aws-s3:v1.2.1          Active     1           1               3d23h
 
-NAME                                      INSTALLED   HEALTHY   PACKAGE                                        AGE
-provider.pkg.crossplane.io/provider-aws   True        True      xpkg.upbound.io/upbound/provider-aws:v0.34.0   18m
+NAME                                                        INSTALLED   HEALTHY   PACKAGE                                                 AGE
+provider.pkg.crossplane.io/upbound-provider-aws-s3          True        True      xpkg.upbound.io/upbound/provider-aws-s3:v1.2.1          3d23h
 
 NAME                                        AGE   TYPE         DEFAULT-SCOPE
-storeconfig.secrets.crossplane.io/default   22h   Kubernetes   crossplane-system
+storeconfig.secrets.crossplane.io/default   4d    Kubernetes   crossplane-system
 ```
+
 
 
 Now we should have some more Kubernetes API resources available:
@@ -405,25 +427,23 @@ You heard right: we don't create a Kubernetes based infrastructure component - b
 Therefore we can have a look into the Crossplane AWS provider API docs:https://doc.crds.dev/github.com/upbound/provider-aws/s3.aws.upbound.io/Bucket/v1beta1@v0.45.0 
 
 
-## Defining all Composite Resource components to provide an AWS EKS cluster
+## CompositeResourceDefinitions (or XRDs)
 
-https://docs.crossplane.io/v1.14/concepts/composite-resource-definitions/
+https://docs.crossplane.io/latest/concepts/composite-resource-definitions/
 
 > A CompositeResourceDefinition (or XRD) defines the type and schema of your XR. It lets Crossplane know that you want a particular kind of XR to exist, and what fields that XR should have.
 
-Since defining your own CompositeResourceDefinitions and Compositions is the main work todo with Crossplane, it's always good to know the full Reference documentation which can be found here https://docs.crossplane.io/v1.14/concepts/compositions/
+Since defining your own CompositeResourceDefinitions and Compositions is the main work todo with Crossplane, it's always good to know the full Reference documentation which can be found here https://docs.crossplane.io/latest/concepts/compositions/
 
-One of the things to know is that Crossplane automatically injects some common 'machinery' into the manifests of the XRDs and Compositions: https://docs.crossplane.io/v1.14/concepts/composite-resources/
+One of the things to know is that Crossplane automatically injects some common 'machinery' into the manifests of the XRDs and Compositions: https://docs.crossplane.io/latest/concepts/composite-resources/ 
 
 
 
 ### Defining a CompositeResourceDefinition (XRD) for our S3 Bucket
 
-All possible fields an XRD can have are documented here:
+All possible fields an XRD can have [are documented in the docs](https://docs.crossplane.io/latest/concepts/composite-resource-definitions/).
 
-https://docs.crossplane.io/v1.14/concepts/composite-resource-definitions/
-
-The field `spec.versions.schema` must contain a OpenAPI schema, which is similar to the ones used by any Kubernetes CRDs. They determine what fields the XR (and claim) will have. The full CRD documentation and a guide on how to write OpenAPI schemas could be found in the Kubernetes docs: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
+The field `spec.versions.schema` must contain a OpenAPI schema, which is similar to the ones used by any Kubernetes CRDs. They determine what fields the XR (and Claim) will have. The full CRD documentation and a guide on how to write OpenAPI schemas [could be found in the Kubernetes docs](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/).
 
 Note that Crossplane will be automatically extended this section. Therefore the following fields are used by Crossplane and will be ignored if they're found in the schema:
 
@@ -438,7 +458,6 @@ Note that Crossplane will be automatically extended this section. Therefore the 
 So our Composite Resource Definition (XRD) for our S3 Bucket could look like [crossplane-contrib/provider-aws/s3/definition.yaml](crossplane-contrib/provider-aws/s3/definition.yaml):
 
 ```yaml
----
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
@@ -511,7 +530,7 @@ xobjectstorages.crossplane.jonashackt.io                        2022-06-27T09:54
 
 The main work in Crossplane has to be done crafting the Compositions. This is because they interact with the infrastructure primitives the cloud provider APIs provide.
 
-Detailled docs to many of the possible manifest configurations can be found here https://docs.crossplane.io/v1.14/concepts/compositions/
+Detailled docs to many of the possible manifest configurations can be found here https://docs.crossplane.io/latest/concepts/compositions/
 
 
 https://github.com/aws/aws-cdk/issues/25288#issuecomment-1522011311
@@ -528,7 +547,6 @@ https://marketplace.upbound.io/providers/upbound/provider-aws/v0.34.0/resources/
 According to https://github.com/hashicorp/terraform-provider-aws/issues/28353 and https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl we need to separate `Bucket` creation from `BucketPublicAccessBlock`, `BucketOwnershipControls` and `BucketACL` - which should now be available finally leveraging the Upbound AWS Provider:
 
 ```yaml
----
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
@@ -669,7 +687,6 @@ https://docs.crossplane.io/v1.14/concepts/composite-resources/
 Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-contrib/provider-aws/s3/claim.yaml):
 
 ```yaml
----
 # Use the spec.group/spec.versions[0].name defined in the XRD
 apiVersion: crossplane.jonashackt.io/v1alpha1
 kind: ObjectStorage
@@ -1390,15 +1407,17 @@ https://github.com/upbound/platform-ref-s3-website
 k8s event-log! `:events` and then scroll down to the newest events and have a (constant) look
 
 
-### Composition Updates
+### Opt out of automatic Composition Updates in XRs/Claims
 
-https://docs.crossplane.io/knowledge-base/guides/composition-revisions/
+Composition Updates are applied automatically to all XRs/Claims by default. [As the docs state](https://docs.crossplane.io/knowledge-base/guides/composition-revisions/):
 
 > If you have 10 PlatformDB XRs all using the big-platform-db Composition, all 10 of those XRs will be instantly updated in accordance with any updates you make to the big-platform-db Composition.
 
 So if we change a Composition, all the XRs will be updated - which we can see in the Kubernetes Events:
 
 >[](screenshots/update-composition-updates-external-resources.png)
+
+This can be a wanted behavior - or not at all.
 
 But be aware of this error:
 
@@ -1409,19 +1428,32 @@ cannot compose resources: cannot parse base template of composed resource "secur
 See https://github.com/crossplane/crossplane/issues/1909
 
 
+In the first steps with Crossplane you might encounter the issue already:
 
-If you don't want Composition updates, use:
-
-
-### Composition Revisions
-
-https://docs.crossplane.io/knowledge-base/guides/composition-revisions/
-
-Self-service via XRs - and a platform team, that manages the Composition:
-
-> Usually, in the interest of self-service, the Composition is managed by a different team from the actual PlatformDB XRs. For example the Composition may be written and maintained by a platform team member, while individual application teams create PlatformDB XRs that use said Composition.
+```shell
+cannot compose resources: cannot parse base template of composed resource "securitygrouprule-cluster-inbound": cannot change the kind or group of a composed resource from ec2.aws.upbound .io/v1beta1, Kind=SecurityGroupRule to ec2.aws.upbound.io/v1beta1, Kind=SecurityGroupIngressRule (possible composed resource template mismatch) 
+```
 
 > Composition Revisions allow XRs to opt out of automatic updates.
+
+If you don't want Composition to do automatic updates, you need to [use Composition Revisions](https://docs.crossplane.io/knowledge-base/guides/composition-revisions/) in your XRs/XRCs via the `compositionUpdatePolicy: Manual` keyword:
+
+```yaml
+apiVersion: example.org/v1alpha1
+kind: PlatformDB
+metadata:
+  name: example
+spec:
+  parameters:
+    storageGB: 20
+  # The Manual policy specifies that you do not want this XR to update to the
+  # current CompositionRevision automatically.
+  compositionUpdatePolicy: Manual
+  compositionRef:
+    name: example
+  writeConnectionSecretToRef:
+    name: db-conn
+```
 
 
 
