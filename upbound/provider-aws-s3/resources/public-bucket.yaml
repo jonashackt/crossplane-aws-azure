@@ -1,7 +1,7 @@
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: Bucket
 metadata:
-  name: crossplane-argocd-s3-bucket
+  name: crossplane-meetup-softwerkskammer
 spec:
   forProvider:
     region: eu-central-1
@@ -11,7 +11,7 @@ spec:
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: BucketPublicAccessBlock
 metadata:
-  name: crossplane-argocd-s3-bucket-pab
+  name: crossplane-meetup-softwerkskammer-pab
 spec:
   forProvider:
     blockPublicAcls: false
@@ -19,40 +19,40 @@ spec:
     ignorePublicAcls: false
     restrictPublicBuckets: false
     bucketRef: 
-      name: crossplane-argocd-s3-bucket
+      name: crossplane-meetup-softwerkskammer
     region: eu-central-1
 ---
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: BucketOwnershipControls
 metadata:
-  name: crossplane-argocd-s3-bucket-osc
+  name: crossplane-meetup-softwerkskammer-osc
 spec:
   forProvider:
     rule:
       - objectOwnership: ObjectWriter
     bucketRef: 
-      name: crossplane-argocd-s3-bucket
+      name: crossplane-meetup-softwerkskammer
     region: eu-central-1
 ---
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: BucketACL
 metadata:
-  name: crossplane-argocd-s3-bucket-acl
+  name: crossplane-meetup-softwerkskammer-acl
 spec:
   forProvider:
     acl: "public-read"
     bucketRef: 
-      name: crossplane-argocd-s3-bucket
+      name: crossplane-meetup-softwerkskammer
     region: eu-central-1
 ---
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: BucketWebsiteConfiguration
 metadata:
-  name: crossplane-argocd-s3-bucket-websiteconf
+  name: crossplane-meetup-softwerkskammer-websiteconf
 spec:
   forProvider:
     indexDocument:
       - suffix: index.html
     bucketRef: 
-      name: crossplane-argocd-s3-bucket
+      name: crossplane-meetup-softwerkskammer
     region: eu-central-1

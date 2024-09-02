@@ -20,6 +20,68 @@ Crossplane https://crossplane.io/ claims to be the "The cloud native control pla
 Literally the best intro post to Crossplane for me was https://blog.crossplane.io/crossplane-vs-cloud-infrastructure-addons/ - here the real key benefits especially compared to other tools are described. Without marketing blabla. If you love deep dives, I can also recommend Nate Reid's blog https://vrelevant.net/ who works as Staff Solutions Engineer at Upbound.
 
 
+# TLDR;
+
+Here are the brief steps to spin up Crossplane and provision an S3 Bucket on AWS (Azure is also possible):
+
+```shell
+# Create a kind cluster
+kind create cluster --image kindest/node:v1.30.4 --wait 5m
+
+# Install Crossplane
+helm dependency update crossplane-install
+helm upgrade --install crossplane --namespace crossplane-system crossplane-install --create-namespace
+kubectl wait --for=condition=ready pod -l app=crossplane --namespace crossplane-system --timeout=120s
+
+# Check Crossplane is there & get CRDs before the Provider installation
+kubectl get all -n crossplane-system
+kubectl get crossplane
+kubectl get crd
+
+# Install AWS Provider (Official Upbound Provider Family-based)
+kubectl apply -f upbound/provider-aws-s3/config/provider-aws-s3.yaml
+kubectl wait --for=condition=healthy --timeout=180s provider/upbound-provider-aws-s3
+kubectl get crd
+
+# Configure AWS Provider 
+echo "[default]
+aws_access_key_id = $(aws configure get aws_access_key_id)
+aws_secret_access_key = $(aws configure get aws_secret_access_key)
+" > aws-creds.conf
+
+kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=./aws-creds.conf
+
+kubectl apply -f upbound/provider-aws-s3/config/provider-config-aws.yaml
+
+# Create Simple S3 Bucket & public accessible Bucket (based on Crossplane Managed Resources only)
+kubectl apply -f upbound/provider-aws-s3/resources/simple-bucket.yaml
+kubectl apply -f upbound/provider-aws-s3/resources/public-bucket.yaml
+# don't forget to delete both before proceeding
+
+# Create XRD
+kubectl apply -f upbound/provider-aws-s3/definition.yaml
+kubectl wait --for=condition=Established --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
+kubectl get xrd
+
+# Create Composition
+kubectl apply -f upbound/provider-aws-s3/composition.yaml
+kubectl get composition
+
+# Create Claim - which will provision the S3 Bucket
+kubectl apply -f upbound/provider-aws-s3/claim.yaml
+kubectl get crossplane
+kubectl get claim
+kubectl get composite
+crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
+
+# Upload a static website (e.g. "App")
+aws s3 sync static s3://spring2024-bucket --acl public-read
+# Open Browser at http://spring2024-bucket.s3-website.eu-central-1.amazonaws.com
+aws s3 rm s3://spring2024-bucket/index.html
+kubectl delete -f upbound/provider-aws-s3/claim.yaml
+```
+
+
 # Crossplane basic concepts
 
 https://docs.crossplane.io/latest/concepts/
@@ -1516,7 +1578,7 @@ We need to provide the provider's schemes.
 For example grab a Composition and validate it against the AWS provider:
 
 ```shell
-crossplane beta validate --cache-dir ~/.crossplane config/provider-aws-s3.yaml resources/bucket.yaml
+crossplane beta validate --cache-dir ~/.crossplane config/provider-aws-s3.yaml resources/public-bucket.yaml
 package schemas does not exist, downloading:  xpkg.upbound.io/upbound/provider-aws-s3:v1.1.0
 [✓] s3.aws.upbound.io/v1beta1, Kind=Bucket, crossplane-argocd-s3-bucket validated successfully
 [✓] s3.aws.upbound.io/v1beta1, Kind=BucketPublicAccessBlock, crossplane-argocd-s3-bucket-pab validated successfully
