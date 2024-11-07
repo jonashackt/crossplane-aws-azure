@@ -25,6 +25,8 @@ Literally the best intro post to Crossplane for me was https://blog.crossplane.i
 Here are the brief steps to spin up Crossplane and provision an S3 Bucket on AWS (Azure is also possible):
 
 ```shell
+## DEMO No.1
+
 # Create a kind cluster
 kind create cluster --image kindest/node:v1.30.4 --wait 5m
 
@@ -35,13 +37,13 @@ kubectl wait --for=condition=ready pod -l app=crossplane --namespace crossplane-
 
 # Check Crossplane is there & get CRDs before the Provider installation
 kubectl get all -n crossplane-system
-kubectl get crossplane
 kubectl get crd
 
 # Install AWS Provider (Official Upbound Provider Family-based)
 kubectl apply -f upbound/provider-aws-s3/config/provider-aws-s3.yaml
 kubectl wait --for=condition=healthy --timeout=180s provider/upbound-provider-aws-s3
 kubectl get crd
+kubectl get crossplane
 
 # Configure AWS Provider 
 echo "[default]
@@ -56,7 +58,18 @@ kubectl apply -f upbound/provider-aws-s3/config/provider-config-aws.yaml
 # Create Simple S3 Bucket & public accessible Bucket (based on Crossplane Managed Resources only)
 kubectl apply -f upbound/provider-aws-s3/resources/simple-bucket.yaml
 kubectl apply -f upbound/provider-aws-s3/resources/public-bucket.yaml
+
+# Upload a static website (e.g. "App")
+aws s3 sync static s3://crossplane-meetup-tech-and-talk-ffm --acl public-read
+# Open Browser at http://crossplane-meetup-softwerkskammer.s3-website.eu-central-1.amazonaws.com
+aws s3 rm s3://crossplane-meetup-tech-and-talk-ffm/index.html
+
 # don't forget to delete both before proceeding
+kubectl delete -f upbound/provider-aws-s3/resources/public-bucket.yaml
+
+
+
+## DEMO No.2: 
 
 # Create XRD
 kubectl apply -f upbound/provider-aws-s3/definition.yaml
@@ -74,10 +87,7 @@ kubectl get claim
 kubectl get composite
 crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 
-# Upload a static website (e.g. "App")
-aws s3 sync static s3://spring2024-bucket --acl public-read
-# Open Browser at http://spring2024-bucket.s3-website.eu-central-1.amazonaws.com
-aws s3 rm s3://spring2024-bucket/index.html
+# Delete Claim
 kubectl delete -f upbound/provider-aws-s3/claim.yaml
 ```
 

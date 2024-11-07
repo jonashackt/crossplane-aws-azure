@@ -1,7 +1,7 @@
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: Bucket
 metadata:
-  name: crossplane-meetup-softwerkskammer
+  name: crossplane-meetup-tech-and-talk-ffm
 spec:
   forProvider:
     region: eu-central-1
@@ -11,7 +11,7 @@ spec:
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: BucketPublicAccessBlock
 metadata:
-  name: crossplane-meetup-softwerkskammer-pab
+  name: crossplane-meetup-tech-and-talk-ffm-pab
 spec:
   forProvider:
     blockPublicAcls: false
@@ -19,40 +19,40 @@ spec:
     ignorePublicAcls: false
     restrictPublicBuckets: false
     bucketRef: 
-      name: crossplane-meetup-softwerkskammer
+      name: crossplane-meetup-tech-and-talk-ffm
     region: eu-central-1
 ---
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: BucketOwnershipControls
 metadata:
-  name: crossplane-meetup-softwerkskammer-osc
+  name: crossplane-meetup-tech-and-talk-ffm-osc
 spec:
   forProvider:
     rule:
       - objectOwnership: ObjectWriter
     bucketRef: 
-      name: crossplane-meetup-softwerkskammer
+      name: crossplane-meetup-tech-and-talk-ffm
     region: eu-central-1
 ---
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: BucketACL
 metadata:
-  name: crossplane-meetup-softwerkskammer-acl
+  name: crossplane-meetup-tech-and-talk-ffm-acl
 spec:
   forProvider:
     acl: "public-read"
     bucketRef: 
-      name: crossplane-meetup-softwerkskammer
+      name: crossplane-meetup-tech-and-talk-ffm
     region: eu-central-1
 ---
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: BucketWebsiteConfiguration
 metadata:
-  name: crossplane-meetup-softwerkskammer-websiteconf
+  name: crossplane-meetup-tech-and-talk-ffm-websiteconf
 spec:
   forProvider:
     indexDocument:
       - suffix: index.html
     bucketRef: 
-      name: crossplane-meetup-softwerkskammer
+      name: crossplane-meetup-tech-and-talk-ffm
     region: eu-central-1
