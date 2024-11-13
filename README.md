@@ -55,17 +55,9 @@ kubectl create secret generic aws-creds -n crossplane-system --from-file=creds=.
 
 kubectl apply -f upbound/provider-aws-s3/config/provider-config-aws.yaml
 
-# Create Simple S3 Bucket & public accessible Bucket (based on Crossplane Managed Resources only)
+# Create Simple S3 Bucket (based on Crossplane Managed Resources only)
 kubectl apply -f upbound/provider-aws-s3/resources/simple-bucket.yaml
-kubectl apply -f upbound/provider-aws-s3/resources/public-bucket.yaml
-
-# Upload a static website (e.g. "App")
-aws s3 sync static s3://crossplane-meetup-tech-and-talk-ffm --acl public-read
-# Open Browser at http://crossplane-meetup-softwerkskammer.s3-website.eu-central-1.amazonaws.com
-aws s3 rm s3://crossplane-meetup-tech-and-talk-ffm/index.html
-
-# don't forget to delete both before proceeding
-kubectl delete -f upbound/provider-aws-s3/resources/public-bucket.yaml
+kubectl delete -f upbound/provider-aws-s3/resources/simple-bucket.yaml
 
 
 
@@ -87,7 +79,13 @@ kubectl get claim
 kubectl get composite
 crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 
-# Delete Claim
+
+# Upload a static website (e.g. "App")
+aws s3 sync static s3://techandtalkffm-bucket --acl public-read
+# Open Browser at http://crossplane-meetup-softwerkskammer.s3-website.eu-central-1.amazonaws.com
+aws s3 rm s3://techandtalkffm-bucket/index.html
+
+# don't forget to delete the Claim
 kubectl delete -f upbound/provider-aws-s3/claim.yaml
 ```
 
