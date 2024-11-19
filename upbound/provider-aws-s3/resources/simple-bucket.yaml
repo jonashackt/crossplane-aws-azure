@@ -1,7 +1,7 @@
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: Bucket
 metadata:
-  name: crossplane-meetup-tech-and-talk-ffm
+  name: crossplane-meetup-container-conf
 spec:
   forProvider:
     region: eu-central-1

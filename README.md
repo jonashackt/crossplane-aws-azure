@@ -29,6 +29,7 @@ Here are the brief steps to spin up Crossplane and provision an S3 Bucket on AWS
 
 # Create a kind cluster
 kind create cluster --image kindest/node:v1.31.1 --wait 5m
+kubectl get crd
 
 # Install Crossplane
 helm dependency update crossplane-install
@@ -57,6 +58,7 @@ kubectl apply -f upbound/provider-aws-s3/config/provider-config-aws.yaml
 
 # Create Simple S3 Bucket (based on Crossplane Managed Resources only)
 kubectl apply -f upbound/provider-aws-s3/resources/simple-bucket.yaml
+kubectl get crossplane
 kubectl delete -f upbound/provider-aws-s3/resources/simple-bucket.yaml
 
 
@@ -74,16 +76,15 @@ kubectl get composition
 
 # Create Claim - which will provision the S3 Bucket
 kubectl apply -f upbound/provider-aws-s3/claim.yaml
+crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 kubectl get crossplane
 kubectl get claim
 kubectl get composite
-crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
-
 
 # Upload a static website (e.g. "App")
-aws s3 sync static s3://techandtalkffm-bucket --acl public-read
+aws s3 sync static s3://container-conf-bucket --acl public-read
 # Open Browser at http://crossplane-meetup-softwerkskammer.s3-website.eu-central-1.amazonaws.com
-aws s3 rm s3://techandtalkffm-bucket/index.html
+aws s3 rm s3://container-conf-bucket/index.html
 
 # don't forget to delete the Claim
 kubectl delete -f upbound/provider-aws-s3/claim.yaml

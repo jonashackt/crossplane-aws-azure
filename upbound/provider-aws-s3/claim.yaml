@@ -8,5 +8,5 @@ spec:
     name: objectstorage-composition
   
   parameters:
-    bucketName: techandtalkffm-bucket
+    bucketName: container-conf-bucket
     region: eu-central-1
