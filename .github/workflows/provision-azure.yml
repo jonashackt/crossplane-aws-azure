@@ -116,9 +116,6 @@ jobs:
               storageAccountName: account4c8672d
           EOF
 
-          echo "### Show crossplane overall status"
-          kubectl get crossplane 
-
           echo "### Trace status of Azure ResourceGroup & Storage Account"
           crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 
@@ -130,6 +127,9 @@ jobs:
 
           echo "### Trace status of Azure ResourceGroup & Storage Account"
           crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
+
+          echo "### Show crossplane overall status"
+          kubectl get crossplane 
 
       - name: Delete Resources
         run: |
