@@ -25,7 +25,7 @@ Literally the best intro post to Crossplane for me was https://blog.crossplane.i
 Here are the brief steps to spin up Crossplane and provision an S3 Bucket on AWS (Azure is also possible):
 
 ```shell
-## DEMO No.1
+## DEMO AWS No.1
 
 # Create a kind cluster
 kind create cluster --image kindest/node:v1.33.1 --wait 5m
@@ -63,7 +63,7 @@ kubectl delete -f upbound/provider-aws-s3/resources/simple-bucket.yaml
 
 
 
-## DEMO No.2: 
+## DEMO AWS No.2: 
 
 # Create XRD
 kubectl apply -f upbound/provider-aws-s3/definition.yaml
@@ -88,6 +88,37 @@ aws s3 rm s3://container-conf-bucket/index.html
 
 # don't forget to delete the Claim
 kubectl delete -f upbound/provider-aws-s3/claim.yaml
+
+
+
+
+```shell
+## DEMO Azure No.1: 
+
+# Install Azure Provider (Official Upbound Provider Family-based)
+kubectl apply -f upbound/provider-azure-storage/config/provider-azure-storage.yaml
+kubectl wait --for=condition=healthy --timeout=120s provider/upbound-provider-azure-storage
+kubectl get crd
+
+# Configure Azure Provider 
+az ad sp create-for-rbac --sdk-auth --role Owner --scopes /subscriptions/$SUBSCRIPTION_ID --name servicePrincipalCrossplaneGHActions > crossplane-azure-provider-key.json
+
+kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
+
+kubectl apply -f upbound/provider-azure-storage/config/provider-config-azure.yaml
+
+# Create XRD
+kubectl apply -f upbound/provider-azure-storage/definition.yaml
+
+# Create Composition
+kubectl apply -f upbound/provider-azure-storage/composition.yaml
+
+# Create Claim - which will provision the Azure Storage Account
+kubectl apply -f upbound/provider-azure-storage/claim.yaml
+crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
+kubectl wait --for=condition=ready --timeout=180s resourcegroup rg-crossplane
+kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/managed-storage-account
+
 ```
 
 
