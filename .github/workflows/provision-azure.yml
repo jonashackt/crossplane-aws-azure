@@ -122,8 +122,8 @@ jobs:
           echo "### Wait until ResourceGroup is ready"
           kubectl wait --for=condition=ready --timeout=180s resourcegroup "$RG_NAME-${{ steps.split.outputs.branchbucketsuffix }}"
 
-          echo "### Wait 3 mins until Claim & XR (Composite) are ready"
-          kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/managed-storage-account
+          echo "### Wait 3 mins until Claim & XR (Composite) are ready (now prefaced with until as described in https://stackoverflow.com/questions/68226288/kubectl-wait-not-working-for-creation-of-resources)"
+          until kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/managed-storage-account  > /dev/null 2>&1; do : ; done
 
           echo "### Trace status of Azure ResourceGroup & Storage Account"
           crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
