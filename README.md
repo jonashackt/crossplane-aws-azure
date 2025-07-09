@@ -119,6 +119,7 @@ crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-acco
 kubectl wait --for=condition=ready --timeout=180s resourcegroup rg-crossplane
 kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/managed-storage-account
 
+kubectl delete -f upbound/provider-azure-storage/claim.yaml
 ```
 
 
