@@ -91,7 +91,7 @@ jobs:
           echo "### Apply function"
           kubectl apply -f upbound/provider-aws-s3/function.yaml
 
-          echo "### Wait until Function is healthy
+          echo "### Wait until Function is healthy"
           kubectl wait --for=condition=healthy --timeout=120s function crossplane-contrib-function-patch-and-transform
 
           echo "### Create Composition"
