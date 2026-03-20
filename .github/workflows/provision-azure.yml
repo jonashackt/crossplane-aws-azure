@@ -94,8 +94,8 @@ jobs:
           kubectl apply -f upbound/provider-azure-storage/definition.yaml
           kubectl get xrd
           
-          echo "### Wait for XRD to become Offered"
-          kubectl wait --for=condition=Offered --timeout=120s xrd xstoragesazure.crossplane.jonashackt.io  
+          echo "### Wait for XRD to become Established"
+          kubectl wait --for=condition=Established --timeout=120s xrd xstoragesazure.crossplane.jonashackt.io  
 
           echo "### Create Composition"
           kubectl apply -f upbound/provider-azure-storage/composition.yaml
