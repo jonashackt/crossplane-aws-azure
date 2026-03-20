@@ -1,20 +1,15 @@
-apiVersion: apiextensions.crossplane.io/v1
+apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xobjectstorages.crossplane.jonashackt.io
+  name: objectstorages.crossplane.jonashackt.io
 spec:
+  scope: Namespaced
   group: crossplane.jonashackt.io
   names:
-    kind: XObjectStorage
-    plural: xobjectstorages
-  claimNames:
     kind: ObjectStorage
     plural: objectstorages
-  defaultCompositionRef:
-    name: objectstorage-composition
-
   versions:
-  - name: v1alpha1
+  - name: v1
     served: true
     referenceable: true
     # OpenAPI schema (like the one used by Kubernetes CRDs). Determines what fields

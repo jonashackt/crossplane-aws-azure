@@ -1,6 +1,7 @@
-apiVersion: s3.aws.upbound.io/v1beta1
+apiVersion: s3.aws.m.upbound.io/v1beta1
 kind: Bucket
 metadata:
+  namespace: default
   name: crossplane-meetup-container-conf
 spec:
   forProvider:
