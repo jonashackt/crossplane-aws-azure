@@ -86,21 +86,19 @@ jobs:
           kubectl get xrd
           
           echo "### Wait for XRD to become Offered"
-          kubectl wait --for=condition=Offered --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
+          kubectl wait --for=condition=Offered --timeout=120s xrd objectstorages.crossplane.jonashackt.io  
 
           echo "### Create Composition"
           kubectl apply -f upbound/provider-aws-s3/composition.yaml
 
           echo "### Create Claim, which should create S3 Bucket (inline here to prevent jobs from interfering with each other)"
           kubectl apply -f - <<EOF
-          apiVersion: crossplane.jonashackt.io/v1alpha1
+          apiVersion: crossplane.jonashackt.io/v1
           kind: ObjectStorage
           metadata:
             namespace: default
             name: managed-upbound-s3
           spec:
-            compositionRef:
-              name: objectstorage-composition
             parameters:
               bucketName: "$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}"
               region: eu-central-1
