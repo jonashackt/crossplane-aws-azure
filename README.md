@@ -27,8 +27,8 @@ Here are the brief steps to spin up Crossplane and provision an S3 Bucket on AWS
 ```shell
 ## DEMO AWS No.1
 
-# Create a kind cluster
-kind create cluster --image kindest/node:v1.33.1 --wait 5m
+# Create a kind cluster^
+kind create cluster --image kindest/node:v1.35.1 --wait 5m
 kubectl get crd
 
 # Install Crossplane
@@ -70,15 +70,17 @@ kubectl apply -f upbound/provider-aws-s3/definition.yaml
 kubectl wait --for=condition=Established --timeout=120s xrd xobjectstorages.crossplane.jonashackt.io  
 kubectl get xrd
 
+# Install Function
+kubectl apply -f upbound/provider-aws-s3/function.yaml
+
 # Create Composition
 kubectl apply -f upbound/provider-aws-s3/composition.yaml
 kubectl get composition
 
-# Create Claim - which will provision the S3 Bucket
-kubectl apply -f upbound/provider-aws-s3/claim.yaml
+# Create Composite Resource (XR) - which will provision the S3 Bucket
+kubectl apply -f upbound/provider-aws-s3/xr.yaml
 crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 kubectl get crossplane
-kubectl get claim
 kubectl get composite
 
 # Upload a static website (e.g. "App")
@@ -436,13 +438,13 @@ If everything went well there should be a new `aws-creds` Secret ready:
 
 
 
-### Create ProviderConfig to consume the Secret containing AWS credentials
+### Create ClusterProviderConfig to consume the Secret containing AWS credentials
 
-To get our Provider finally working we also need to create a `ProviderConfig` accordingly that will tell the Provider where to find it's AWS credentials. Therefore we create a [upbound/provider-aws-s3/config/provider-config-aws.yaml](upbound/provider-aws-s3/config/provider-config-aws.yaml):
+To get our Provider finally working we also need to create a `ClusterProviderConfig` accordingly that will tell the Provider where to find it's AWS credentials. Therefore we create a [upbound/provider-aws-s3/config/provider-config-aws.yaml](upbound/provider-aws-s3/config/provider-config-aws.yaml):
 
 ```yaml
-apiVersion: aws.upbound.io/v1beta1
-kind: ProviderConfig
+apiVersion: aws.m.upbound.io/v1beta1
+kind: ClusterProviderConfig
 metadata:
   name: default
 spec:
@@ -454,7 +456,7 @@ spec:
       key: creds
 ```
 
-> Crossplane resources use the `ProviderConfig` named `default` if no specific ProviderConfig is specified, so this ProviderConfig will be the default for all AWS resources.
+> Crossplane resources use the `ClusterProviderConfig` named `default` if no specific ProviderConfig is specified, so this ClusterProviderConfig will be the default for all AWS resources.
 
 The `secretRef.name` and `secretRef.key` has to match the fields of the already created Secret.
 
@@ -470,7 +472,7 @@ Now we should have everything in place to use the Upbound AWS Provider! We can d
 ```shell
 $ kubectl get crossplane
 NAME                                    AGE
-providerconfig.aws.upbound.io/default   55s
+clusterproviderconfig.aws.upbound.io/default   55s
 
 NAME                                                                             HEALTHY   REVISION   IMAGE                                                   STATE      DEP-FOUND   DEP-INSTALLED   AGE
 providerrevision.pkg.crossplane.io/upbound-provider-aws-s3-4c95b368de88          True      1          xpkg.upbound.io/upbound/provider-aws-s3:v1.2.1          Active     1           1               3d23h
@@ -488,8 +490,9 @@ Now we should have some more Kubernetes API resources available:
 
 ```shell
 $ kubectl api-resources | grep aws
-providerconfigs                                         aws.upbound.io/v1beta1                 false        ProviderConfig
-providerconfigusages                                    aws.upbound.io/v1beta1                 false        ProviderConfigUsage
+clusterproviderconfigs                                  aws.m.upbound.io/v1beta1               false        ClusterProviderConfig
+providerconfigs                                         aws.m.upbound.io/v1beta1                 false        ProviderConfig
+providerconfigusages                                    aws.m.upbound.io/v1beta1                 false        ProviderConfigUsage
 storeconfigs                                            aws.upbound.io/v1alpha1                false        StoreConfig
 bucketaccelerateconfigurations                          s3.aws.upbound.io/v1beta1              false        BucketAccelerateConfiguration
 bucketacls                                              s3.aws.upbound.io/v1beta1              false        BucketACL
@@ -1068,15 +1071,15 @@ kubectl wait --for=condition=healthy --timeout=120s provider/provider-azure
 Otherwise we may run into errors like this when applying the `ProviderConfig` right after the Provider.
 
 
-### Create ProviderConfig to consume the Secret containing Azure credentials
+### Create ClusterProviderConfig to consume the Secret containing Azure credentials
 
 https://docs.crossplane.io/latest/getting-started/provider-azure/#create-a-providerconfig
 
-Now we need to create `ProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-azure.yaml](crossplane-contrib/provider-azure/config/provider-config-azure.yaml):
+Now we need to create `ClusterProviderConfig` object that will tell the AWS Provider where to find it's AWS credentials. Therefore we create a [provider-config-azure.yaml](crossplane-contrib/provider-azure/config/provider-config-azure.yaml):
 
 ```yaml
-apiVersion: azure.upbound.io/v1beta1
-kind: ProviderConfig
+apiVersion: azure.m.upbound.io/v1beta1
+kind: ClusterProviderConfig
 metadata:
   name: default
 spec:
@@ -1088,7 +1091,7 @@ spec:
       key: creds
 ```
 
-> Crossplane resources use the `ProviderConfig` named `default` if no specific ProviderConfig is specified, so this ProviderConfig will be the default for all Azure resources.
+> Crossplane resources use the `ClusterProviderConfig` named `default` if no specific ProviderConfig is specified, so this ProviderConfig will be the default for all Azure resources.
 
 The `secretRef.name` and `secretRef.key` has to match the fields of the already created Secret.
 

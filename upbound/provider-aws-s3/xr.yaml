@@ -1,12 +1,9 @@
-apiVersion: crossplane.jonashackt.io/v1alpha1
+apiVersion: crossplane.jonashackt.io/v1
 kind: ObjectStorage
 metadata:
   namespace: default
   name: managed-upbound-s3
 spec:
-  compositionRef:
-    name: objectstorage-composition
-  
   parameters:
     bucketName: container-conf-bucket
     region: eu-central-1
