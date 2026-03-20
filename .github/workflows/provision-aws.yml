@@ -136,7 +136,7 @@ jobs:
           aws s3 rm "s3://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}/index.html"
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
-          kubectl delete -f upbound/provider-aws-s3/claim.yaml
+          kubectl delete -f upbound/provider-aws-s3/xr.yaml
 
           echo "### Give the deletion process some time by having a look into the crossplane status"
           kubectl get crossplane 
