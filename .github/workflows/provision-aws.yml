@@ -79,7 +79,7 @@ jobs:
           kubectl get provider
 
       # Not using kubectl apply -f upbound/provider-aws-s3/claim.yaml currently to prevent jobs from interfering with each other
-      - name: Create XRD, Composition & Claim to create S3 Bucket (now using Upbound official AWS Provider Families)
+      - name: Create XRD, Composition & XR to create S3 Bucket (now using Upbound official AWS Provider Families)
         run: |
           echo "### Create CompositeResourceDefinition (XRD)"
           kubectl apply -f upbound/provider-aws-s3/definition.yaml
@@ -89,7 +89,7 @@ jobs:
           kubectl wait --for=condition=Established --timeout=120s xrd objectstorages.crossplane.jonashackt.io  
 
           echo "### Apply function"
-          kubectl apply -f upbound/provider-aws-s3/function.yaml
+          kubectl apply -f crossplane-contrib/function-patch-and-transform/function.yaml
 
           echo "### Wait until Function is healthy"
           kubectl wait --for=condition=healthy --timeout=120s function crossplane-contrib-function-patch-and-transform

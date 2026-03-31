@@ -71,7 +71,7 @@ kubectl wait --for=condition=Established --timeout=120s xrd xobjectstorages.cros
 kubectl get xrd
 
 # Install Function
-kubectl apply -f upbound/provider-aws-s3/function.yaml
+kubectl apply -f crossplane-contrib/function-patch-and-transform/function.yaml
 
 # Create Composition
 kubectl apply -f upbound/provider-aws-s3/composition.yaml
@@ -88,8 +88,8 @@ aws s3 sync static s3://container-conf-bucket --acl public-read
 # Open Browser at http://crossplane-meetup-softwerkskammer.s3-website.eu-central-1.amazonaws.com
 aws s3 rm s3://container-conf-bucket/index.html
 
-# don't forget to delete the Claim
-kubectl delete -f upbound/provider-aws-s3/claim.yaml
+# don't forget to delete the XR
+kubectl delete -f upbound/provider-aws-s3/xr.yaml
 
 
 
@@ -102,7 +102,8 @@ kubectl apply -f upbound/provider-azure-storage/config/provider-azure-storage.ya
 kubectl wait --for=condition=healthy --timeout=120s provider/upbound-provider-azure-storage
 kubectl get crd
 
-# Configure Azure Provider 
+# Configure Azure Provider
+export SUBSCRIPTION_ID=$(az account show --query id --output tsv)
 az ad sp create-for-rbac --sdk-auth --role Owner --scopes /subscriptions/$SUBSCRIPTION_ID --name servicePrincipalCrossplaneGHActions > crossplane-azure-provider-key.json
 
 kubectl create secret generic azure-account-creds -n crossplane-system --from-file=creds=./crossplane-azure-provider-key.json
@@ -112,16 +113,19 @@ kubectl apply -f upbound/provider-azure-storage/config/provider-config-azure.yam
 # Create XRD
 kubectl apply -f upbound/provider-azure-storage/definition.yaml
 
+# Install Function
+kubectl apply -f crossplane-contrib/function-patch-and-transform/function.yaml
+
 # Create Composition
 kubectl apply -f upbound/provider-azure-storage/composition.yaml
 
-# Create Claim - which will provision the Azure Storage Account
-kubectl apply -f upbound/provider-azure-storage/claim.yaml
+# Create XR - which will provision the Azure Storage Account
+kubectl apply -f upbound/provider-azure-storage/xr.yaml
 crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 kubectl wait --for=condition=ready --timeout=180s resourcegroup rg-crossplane
 kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/managed-storage-account
 
-kubectl delete -f upbound/provider-azure-storage/claim.yaml
+kubectl delete -f upbound/provider-azure-storage/xr.yaml
 ```
 
 
@@ -130,9 +134,9 @@ kubectl delete -f upbound/provider-azure-storage/claim.yaml
 https://docs.crossplane.io/latest/concepts/
 
 * [Managed Resourced (MR)](https://crossplane.io/docs/v1.8/concepts/managed-resources.html): Kubernetes custom resources (CRDs) that represent infrastructure primitives (mostly in cloud providers). All Crossplane Managed Resources could be found via https://doc.crds.dev/ 
-* [Composite Resources (XR)](https://crossplane.io/docs/v1.8/concepts/composition.html): compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by:
+* Crossplane Resources to compose Managed Resources into higher level infrastructure units (especially interesting for platform teams). They are defined by:
     * a `CompositeResourceDefinition` (XRD) (which defines an OpenAPI schema the `Composition` needs to be conform to)
-    * (optional) `CompositeResourceClaims` (XRC) (which is an abstraction of the XR for the application team to consume) - but is fantastic to hold the exact configuration parameters for the concrete resources you want to provision
+    * a `CompositeResource` (XR) is fantastic to hold the exact configuration parameters for the concrete resources you want to provision
     * a `Composition` that describes the actual infrastructure primitives aka `Managed Resources` used to build the Composite Resource. One XRD could have multiple Compositions - e.g. to one for every environment like development, stating and production
     * and configured by a `Configuration`
 * [Packages](https://crossplane.io/docs/v1.8/concepts/packages.html): OCI container images to handle distribution, version updates, dependency management & permissions for Providers & Configurations. Packages were formerly named `Stacks`.
@@ -549,13 +553,12 @@ One of the things to know is that Crossplane automatically injects some common '
 
 All possible fields an XRD can have [are documented in the docs](https://docs.crossplane.io/latest/concepts/composite-resource-definitions/).
 
-The field `spec.versions.schema` must contain a OpenAPI schema, which is similar to the ones used by any Kubernetes CRDs. They determine what fields the XR (and Claim) will have. The full CRD documentation and a guide on how to write OpenAPI schemas [could be found in the Kubernetes docs](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/).
+The field `spec.versions.schema` must contain a OpenAPI schema, which is similar to the ones used by any Kubernetes CRDs. They determine what fields the XR will have. The full CRD documentation and a guide on how to write OpenAPI schemas [could be found in the Kubernetes docs](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/).
 
 Note that Crossplane will be automatically extended this section. Therefore the following fields are used by Crossplane and will be ignored if they're found in the schema:
 
     spec.resourceRef
     spec.resourceRefs
-    spec.claimRef
     spec.writeConnectionSecretToRef
     status.conditions
     status.connectionDetails
@@ -571,16 +574,12 @@ metadata:
   name: xobjectstorages.crossplane.jonashackt.io
 spec:
   # This XRD defines an XR in the 'crossplane.jonashackt.io' API group.
-  # The XR or Claim must use this group together with the spec.versions[0].name as it's apiVersion, like this:
+  # The XR must use this group together with the spec.versions[0].name as it's apiVersion, like this:
   # 'crossplane.jonashackt.io/v1alpha1'
   group: crossplane.jonashackt.io
   
   # XR names should always be prefixed with an 'X'
   names:
-    kind: XObjectStorage
-    plural: xobjectstorages
-  # This type of XR offers a claim, which should have the same name without the 'X' prefix
-  claimNames:
     kind: ObjectStorage
     plural: objectstorages
   
@@ -594,7 +593,7 @@ spec:
     served: true
     referenceable: true
     # OpenAPI schema (like the one used by Kubernetes CRDs). Determines what fields
-    # the XR (and claim) will have. Will be automatically extended by crossplane.
+    # the XR will have. Will be automatically extended by crossplane.
     # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
     # for full CRD documentation and guide on how to write OpenAPI schemas
     schema:
@@ -603,7 +602,7 @@ spec:
         properties:
           spec:
             type: object
-            # We define 2 needed parameters here one has to provide as XR or Claim spec.parameters
+            # We define 2 needed parameters here one has to provide as XR spec.parameters
             properties:
               parameters:
                 type: object
@@ -662,7 +661,7 @@ metadata:
     # easy discovery of compatible Compositions.
     crossplane.io/xrd: xobjectstorages.crossplane.jonashackt.io
     # The following label marks this Composition for AWS. This label can 
-    # be used in 'compositionSelector' in an XR or Claim.
+    # be used in 'compositionSelector' in an XR.
     provider: aws
 spec:
   # Each Composition must declare that it is compatible with a particular type
@@ -672,7 +671,7 @@ spec:
     apiVersion: crossplane.jonashackt.io/v1alpha1
     kind: XObjectStorage
   
-  # When an XR is created in response to a claim Crossplane needs to know where
+  # When an XR is created Crossplane needs to know where
   # it should create the XR's connection secret. This is configured using the
   # 'writeConnectionSecretsToNamespace' field.
   writeConnectionSecretsToNamespace: crossplane-system
@@ -784,20 +783,19 @@ kubectl apply -f upbound/provider-aws-s3/composition.yaml
 
 
 
-### Craft a Composite Resource (XR) or Claim (XRC)
+### Craft a Composite Resource (XR)
 
 Crossplane could look quite intimidating when having a first look. There are few guides around to show how to approach a setup when using Crossplane the first time. You can choose between writing an XR __OR__ XRC! You don't need both, since the XR will be generated from the XRC, if you choose to craft a XRC.
 
 https://docs.crossplane.io/v1.14/concepts/composite-resources/
 
-Since we want to create a S3 Bucket, here's an suggestion for an [claim.yaml](crossplane-contrib/provider-aws/s3/claim.yaml):
+Since we want to create a S3 Bucket, here's an suggestion for an [xr.yaml](crossplane-contrib/provider-aws/s3/xr.yaml):
 
 ```yaml
 # Use the spec.group/spec.versions[0].name defined in the XRD
 apiVersion: crossplane.jonashackt.io/v1alpha1
 kind: ObjectStorage
 metadata:
-  # Only claims are namespaced, unlike XRs.
   namespace: default
   name: managed-s3
 spec:
@@ -817,14 +815,14 @@ spec:
 Testdrive with:
 
 ```shell
-kubectl apply -f crossplane-contrib/provider-aws/s3/claim.yaml
+kubectl apply -f crossplane-contrib/provider-aws/s3/xr.yaml
 ```
 
 When somthing goes wrong with the validation, this could look like this:
 
 ```shell
-$ kubectl apply -f claim.yaml
-error: error validating "claim.yaml": error validating data: [ValidationError(S3Bucket.metadata): unknown field "crossplane.io/external-name" in io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta_v2, ValidationError(S3Bucket.spec): unknown field "parameters" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec, ValidationError(S3Bucket.spec.writeConnectionSecretToRef): missing required field "namespace" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec.writeConnectionSecretToRef, ValidationError(S3Bucket.spec): missing required field "bucketName" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec, ValidationError(S3Bucket.spec): missing required field "region" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec]; if you choose to ignore these errors, turn validation off with --validate=false
+$ kubectl apply -f xr.yaml
+error: error validating "xr.yaml": error validating data: [ValidationError(S3Bucket.metadata): unknown field "crossplane.io/external-name" in io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta_v2, ValidationError(S3Bucket.spec): unknown field "parameters" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec, ValidationError(S3Bucket.spec.writeConnectionSecretToRef): missing required field "namespace" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec.writeConnectionSecretToRef, ValidationError(S3Bucket.spec): missing required field "bucketName" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec, ValidationError(S3Bucket.spec): missing required field "region" in io.jonashackt.crossplane.v1alpha1.S3Bucket.spec]; if you choose to ignore these errors, turn validation off with --validate=false
 ```
 
 The Crossplane validation is a great way to debug your yaml configuration - it hints you to the actual problems that are still present.
@@ -836,12 +834,12 @@ The Crossplane validation is a great way to debug your yaml configuration - it h
 
 https://docs.crossplane.io/knowledge-base/guides/troubleshoot/
 
-> Per Kubernetes convention, Crossplane keeps errors close to the place they happen. This means that if your claim is not becoming ready due to an issue with your Composition or with a composed resource you’ll need to “follow the references” to find out why. Your claim will only tell you that the XR is not yet ready.
+> Per Kubernetes convention, Crossplane keeps errors close to the place they happen. This means that if your xr is not becoming ready due to an issue with your Composition or with a composed resource you’ll need to “follow the references” to find out why. Your xr will only tell you that the XR is not yet ready.
 
 
 The docs also tell us what they mean by "follow the references":
 
-* Find your XR by running `kubectl describe <claim-kind> <claim-metadata.name>` and look for its “Resource Ref” (aka `spec.resourceRef`).
+* Find your XR by running `kubectl describe <xr-kind> <xr-metadata.name>` and look for its “Resource Ref” (aka `spec.resourceRef`).
 * Run `kubectl describe` on your XR. This is where you’ll find out about issues with the Composition you’re using, if any.
 * If there are no issues but your XR doesn’t seem to be becoming ready, take a look for the “Resource Refs” (or `spec.resourceRefs`) to find your composed resources.
 * Run `kubectl describe` on each referenced composed resource to determine whether it is ready and what issues, if any, it is encountering.
@@ -852,7 +850,7 @@ The docs also tell us what they mean by "follow the references":
 
 ### Waiting for resources to become ready
 
-There are some possible things to check while your resources (may) get deployed after running a `kubectl apply -f claim.yaml` (see https://crossplane.io/docs/v1.8/getting-started/provision-infrastructure.html#claim-your-infrastructure).
+There are some possible things to check while your resources (may) get deployed after running a `kubectl apply -f xr.yaml` (see https://crossplane.io/docs/v1.8/getting-started/provision-infrastructure.html#claim-your-infrastructure).
 
 The best overview gives a `kubectl get crossplane` which will simply list all the crossplane resources:
 
@@ -875,15 +873,14 @@ NAME                                        AGE     TYPE         DEFAULT-SCOPE
 storeconfig.secrets.crossplane.io/default   5d23h   Kubernetes   crossplane-system
 ```
 
-* `kubectl get claim`: get all resources of all claim kinds, like PostgreSQLInstance.
-* `kubectl get composite`: get all resources that are of composite kind, like XPostgreSQLInstance.
+* `kubectl get composite`: get all resources that are of composite kind, like PostgreSQLInstance.
 * `kubectl get managed`: get all resources that represent a unit of external infrastructure.
 * `kubectl get <name-of-provider>`: get all resources related to <provider>.
 * `kubectl get crossplane`: get all resources related to Crossplane.
 
 
 
-We can also check our claim with `kubectl get <claim-kind> <claim-metadata.name>` like this:
+We can also check our xr with `kubectl get <xr-kind> <xr-metadata.name>` like this:
 
 ```shell
 $ kubectl get ObjectStorage managed-s3
@@ -891,10 +888,10 @@ NAME         READY   CONNECTION-SECRET               AGE
 managed-s3           managed-s3-connection-details   5s
 ```
 
-To watch the provisioned resources become ready we can run `kubectl get crossplane -l crossplane.io/claim-name=<claim-metadata.name>`:
+To watch the provisioned resources become ready we can run `kubectl get crossplane -l crossplane.io/xr-name=<xr-metadata.name>`:
 
 ```shell
-kubectl get crossplane -l crossplane.io/claim-name=managed-s3
+kubectl get crossplane -l crossplane.io/xr-name=managed-s3
 ```
 
 
@@ -926,7 +923,7 @@ Now we can open up http://microservice-ui-nuxt-js-static-bucket2.s3-website.eu-c
 
 
 
-Before removing the claim, we should remove our `index.html` - otherwise we'll run into errors like this:
+Before removing the xr, we should remove our `index.html` - otherwise we'll run into errors like this:
 
 ```shell
   Warning  CannotDeleteExternalResource  37s (x16 over 57s)  managed/bucket.s3.aws.crossplane.io  (combined from similar events): operation error S3: DeleteBucket, https response error StatusCode: 409, RequestID: 0WHR906YZRF0YDSH, HostID: x7cz2iYF/8Ag2wKtKRZUy1j3hPk67tBUOTFeR//+grrD7plqQ5Zo6EecO70KOOgHKbY7hUyp9vU=, api error BucketNotEmpty: The bucket you tried to delete is not empty
@@ -941,7 +938,7 @@ aws s3 rm s3://devopsthde-bucket/index.html
 Finally remove our S3 Bucket again with 
 
 ```shell
-kubectl delete -f upbound/provider-aws-s3/claim.yaml
+kubectl delete -f upbound/provider-aws-s3/xr.yaml
 ```
 
 Now also the S3 Bucket should be removed by crossplane.
@@ -1126,9 +1123,6 @@ metadata:
 spec:
   group: crossplane.jonashackt.io
   names:
-    kind: XStorageAzure
-    plural: xstoragesazure
-  claimNames:
     kind: StorageAzure
     plural: storagesazure
   
@@ -1236,9 +1230,9 @@ kubectl apply -f upbound/provider-azure-storage/composition.yaml
 
 
 
-### Craft a Composite Resource (XR) or Claim (XRC)
+### Craft a Composite Resource (XR)
 
-Since we want to create a Storage Account, here's an suggestion for an [claim.yaml](upbound/provider-azure-storage/claim.yaml):
+Since we want to create a Storage Account, here's an suggestion for an [xr.yaml](upbound/provider-azure-storage/xr.yaml):
 
 ```yaml
 ---
@@ -1260,7 +1254,7 @@ spec:
 Testdrive with 
 
 ```shell
-kubectl apply -f upbound/provider-azure-storage/claim.yaml
+kubectl apply -f upbound/provider-azure-storage/xr.yaml
 ```
 
 
@@ -1272,7 +1266,7 @@ We can use the new `trace` command of the [`crossplane` CLI introduced in 1.14](
 ```shell
 $ crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
 NAME                                SYNCED   READY   STATUS                                                                                
-StorageAzure/account (default)      True     False   Waiting: ...resource claim is waiting for composite resource to become Ready          
+StorageAzure/account (default)      True     False   Waiting: ...resource xr is waiting for composite resource to become Ready          
 └─ XStorageAzure/account-g97s8      False    -       ReconcileError: ... "object": spec.forProvider.accountTier is a required parameter]   
    ├─ Account/account4c8672f        -        -       Error: accounts.storage.azure.upbound.io "account4c8672f" not found                   
    └─ ResourceGroup/rg-crossplane   -        -       Error: resourcegroups.azure.upbound.io "rg-crossplane" not found    
@@ -1280,7 +1274,7 @@ StorageAzure/account (default)      True     False   Waiting: ...resource claim 
 
 Ahh, so our Composition isn't crafted correctly. 
 
-To fix this, we need to have a look into the API docs at https://doc.crds.dev/github.com/upbound/provider-azure/storage.azure.upbound.io/Account/v1beta1@v0.38.2. After fixing our Composition and reapplying it together with the Claim, we can have a look into the Azure Portal. Our Resource Group should show up:
+To fix this, we need to have a look into the API docs at https://doc.crds.dev/github.com/upbound/provider-azure/storage.azure.upbound.io/Account/v1beta1@v0.38.2. After fixing our Composition and reapplying it together with the xr, we can have a look into the Azure Portal. Our Resource Group should show up:
 
 ![azure-console-resourcegroup](screenshots/azure-console-resourcegroup.png)
 
@@ -1513,9 +1507,9 @@ https://github.com/upbound/platform-ref-s3-website
 k8s event-log! `:events` and then scroll down to the newest events and have a (constant) look
 
 
-### Opt out of automatic Composition Updates in XRs/Claims
+### Opt out of automatic Composition Updates in XRs
 
-Composition Updates are applied automatically to all XRs/Claims by default. [As the docs state](https://docs.crossplane.io/knowledge-base/guides/composition-revisions/):
+Composition Updates are applied automatically to all XRs by default. [As the docs state](https://docs.crossplane.io/knowledge-base/guides/composition-revisions/):
 
 > If you have 10 PlatformDB XRs all using the big-platform-db Composition, all 10 of those XRs will be instantly updated in accordance with any updates you make to the big-platform-db Composition.
 
@@ -1598,16 +1592,16 @@ crossplane --version
 v1.15.0
 ```
 
-### Validate XR or Claim against Composite Resource Definition
+### Validate XR against Composite Resource Definition
 
 Before using the command have a look at the command reference: https://docs.crossplane.io/latest/cli/command-reference/#beta-validate:
 
 > The crossplane beta validate command validates compositions against provider or XRD schemas using the Kubernetes API server’s validation library.
 
-So let's grab a `definition.yaml` and validate a `claim.yaml` against it:
+So let's grab a `definition.yaml` and validate a `xr.yaml` against it:
 
 ```shell
-crossplane beta validate --cache-dir ~/.crossplane definition.yaml claim.yaml
+crossplane beta validate --cache-dir ~/.crossplane definition.yaml xr.yaml
 [✓] crossplane.jonashackt.io/v1alpha1, Kind=ObjectStorage, managed-upbound-s3 validated successfully
 Total 1 resources: 0 missing schemas, 1 success cases, 0 failure cases
 ```
@@ -1843,11 +1837,11 @@ Later I create a inline Claim instead of using the yaml file to be able to overr
 
 ```yaml
       # Not using kubectl apply -f upbound/provider-aws-s3/claim.yaml currently to prevent jobs from interfering with each other
-      - name: Create XRD, Composition & Claim to create S3 Bucket (now using Upbound official AWS Provider Families)
+      - name: Create XRD, Composition & XR to create S3 Bucket (now using Upbound official AWS Provider Families)
         run: |
           ...
 
-          echo "### Create Claim, which should create S3 Bucket (inline here to prevent jobs from interfering with each other)"
+          echo "### Create XR, which should create S3 Bucket (inline here to prevent jobs from interfering with each other)"
           kubectl apply -f - <<EOF
           apiVersion: crossplane.jonashackt.io/v1alpha1
           kind: ObjectStorage
@@ -1881,7 +1875,7 @@ And finally we need to use the bucket name also when we interact with AWS S3:
           echo "### Access S3 Bucket static website"
           curl "http://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}.s3-website.eu-central-1.amazonaws.com"
 
-      - name: Delete index.html and remove Claim for S3 Bucket deletion
+      - name: Delete index.html and remove XR for S3 Bucket deletion
         run: |
           echo "### Delete index.html from S3 Bucket"
           aws s3 rm "s3://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}/index.html"

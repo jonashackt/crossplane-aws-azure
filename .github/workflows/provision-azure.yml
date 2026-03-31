@@ -95,14 +95,20 @@ jobs:
           kubectl get xrd
           
           echo "### Wait for XRD to become Established"
-          kubectl wait --for=condition=Established --timeout=120s xrd xstoragesazure.crossplane.jonashackt.io  
+          kubectl wait --for=condition=Established --timeout=120s xrd storagesazure.crossplane.jonashackt.io  
+
+          echo "### Apply function"
+          kubectl apply -f crossplane-contrib/function-patch-and-transform/function.yaml
+
+          echo "### Wait until Function is healthy"
+          kubectl wait --for=condition=healthy --timeout=120s function crossplane-contrib-function-patch-and-transform
 
           echo "### Create Composition"
           kubectl apply -f upbound/provider-azure-storage/composition.yaml
 
-          echo "### Create Claim, which should create ResourceGroup & StorageAccount"
+          echo "### Create XR, which should create ResourceGroup & StorageAccount"
           kubectl apply -f - <<EOF
-          apiVersion: crossplane.jonashackt.io/v1alpha1
+          apiVersion: crossplane.jonashackt.io/v1
           kind: StorageAzure
           metadata:
             namespace: default
@@ -132,4 +138,4 @@ jobs:
       - name: Delete Resources
         run: |
           echo "### Remove CompositeResourceClaim to delete Storage Account and Resource Group"
-          kubectl delete -f upbound/provider-azure-storage/claim.yaml
+          kubectl delete -f upbound/provider-azure-storage/xr.yaml
