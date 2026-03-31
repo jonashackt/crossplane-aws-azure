@@ -1,22 +1,17 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xstoragesazure.crossplane.jonashackt.io
+  name: storagesazure.crossplane.jonashackt.io
 spec:
+  scope: Namespaced
   group: crossplane.jonashackt.io
   names:
-    kind: XStorageAzure
-    plural: xstoragesazure
-  claimNames:
     kind: StorageAzure
     plural: storagesazure
-  
-  defaultCompositionRef:
-    name: storageazure-composition
 
   versions:
   # This version should only change, when the parameters defined also change - and thus create a new version
-  - name: v1alpha1
+  - name: v1
     served: true
     referenceable: true
     # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
