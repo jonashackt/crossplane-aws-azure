@@ -25,7 +25,7 @@ jobs:
         env:
           BRANCH: ${{ github.ref_name }}
         id: split
-        run: echo "::set-output name=branchbucketsuffix::${BRANCH##*/}"
+        run: echo "branchbucketsuffix=${BRANCH##*/}" >> $GITHUB_OUTPUT
 
       - name: Spin up kind
         run: |
