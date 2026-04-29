@@ -110,6 +110,9 @@ jobs:
               region: eu-central-1
           EOF
 
+          echo "### Wait some time for resources to get in a more provisioned state"
+          sleep 30
+
           echo "### Trace status of AWS S3 Bucket"
           crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 

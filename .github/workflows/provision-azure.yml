@@ -120,6 +120,9 @@ jobs:
               storageAccountName: account4c8672d
           EOF
 
+          echo "### Wait some time for resources to get in a more provisioned state"
+          sleep 30
+
           echo "### Trace status of Azure ResourceGroup & Storage Account"
           crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 
