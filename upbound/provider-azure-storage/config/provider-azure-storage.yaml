@@ -3,7 +3,7 @@ kind: Provider
 metadata:
   name: upbound-provider-azure-storage
 spec:
-  package: xpkg.upbound.io/upbound/provider-azure-storage:v2.4.0
+  package: xpkg.upbound.io/upbound/provider-azure-storage:v2.5.4
   packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
