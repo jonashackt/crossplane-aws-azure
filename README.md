@@ -79,7 +79,7 @@ kubectl get composition
 
 # Create Composite Resource (XR) - which will provision the S3 Bucket
 kubectl apply -f upbound/provider-aws-s3/xr.yaml
-crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
+crossplane resource trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 kubectl get crossplane
 kubectl get composite
 
@@ -121,7 +121,7 @@ kubectl apply -f upbound/provider-azure-storage/composition.yaml
 
 # Create XR - which will provision the Azure Storage Account
 kubectl apply -f upbound/provider-azure-storage/xr.yaml
-crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
+crossplane resource trace storageazure.crossplane.jonashackt.io/managed-storage-account -o wide
 kubectl wait --for=condition=ready --timeout=180s resourcegroup rg-crossplane
 kubectl wait --for=condition=ready --timeout=360s storageazure.crossplane.jonashackt.io/managed-storage-account
 
@@ -167,7 +167,7 @@ https://docs.crossplane.io/latest/cli/
 Also we should install the crossplane CLI
 
 ```shell
-curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh" | sh
+curl -sL "https://cli.crossplane.io/install.sh" | sh
 sudo mv crossplane /usr/local/bin
 ```
 
@@ -1264,7 +1264,7 @@ kubectl apply -f upbound/provider-azure-storage/xr.yaml
 We can use the new `trace` command of the [`crossplane` CLI introduced in 1.14](https://blog.crossplane.io/crossplane-v1-14/) to have a look, what's going on with our Azure resources:
 
 ```shell
-$ crossplane beta trace storageazure.crossplane.jonashackt.io/managed-storage-account
+$ crossplane resource trace storageazure.crossplane.jonashackt.io/managed-storage-account
 NAME                                SYNCED   READY   STATUS                                                                                
 StorageAzure/account (default)      True     False   Waiting: ...resource xr is waiting for composite resource to become Ready          
 └─ XStorageAzure/account-g97s8      False    -       ReconcileError: ... "object": spec.forProvider.accountTier is a required parameter]   
@@ -1568,14 +1568,14 @@ https://docs.crossplane.io/knowledge-base/guides/troubleshoot/
 
 ##### Install crossplane CLI
 
-https://github.com/crossplane/crossplane/releases/tag/v1.15.0
+https://docs.crossplane.io/cli/latest/
 
-> Enhancements to the Crossplane CLI: New subcommands like `crossplane beta validate` for schema validation, `crossplane beta top` for resource utilization views similar to `kubectl top pods`, and `crossplane beta convert` for converting resources to newer formats or configurations.
+> Enhancements to the Crossplane CLI: New subcommands like `crossplane resource validate` for schema validation, `crossplane cluster top` for resource utilization views similar to `kubectl top pods`, and `crossplane composition convert` for converting resources to newer formats or configurations.
 
 Install crossplane CLI:
 
 ```shell
-curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh" |sh
+curl -sL "https://cli.crossplane.io/install.sh" |sh
 ```
 
 If that produces an error, try to manually craft the download link:
@@ -1585,23 +1585,24 @@ curl -sfLo crossplane "https://releases.crossplane.io/stable/v1.15.0/bin/linux_a
 sudo mv crossplane /usr/local/bin
 ```
 
-Be sure to have the `v1.15.0` version installed as a minimum, otherwise the `crossplane beta validate` command won't work:
+Be sure to have the `v2.3.0` version installed as a minimum, otherwise the `crossplane resource validate` command won't work:
 
 ```shell
 crossplane --version
-v1.15.0
+Client Version: v2.3.0
+crossplane: error: unable to get crossplane version: Crossplane version or image tag not found
 ```
 
 ### Validate XR against Composite Resource Definition
 
 Before using the command have a look at the command reference: https://docs.crossplane.io/latest/cli/command-reference/#beta-validate:
 
-> The crossplane beta validate command validates compositions against provider or XRD schemas using the Kubernetes API server’s validation library.
+> The crossplane resource validate command validates compositions against provider or XRD schemas using the Kubernetes API server’s validation library.
 
 So let's grab a `definition.yaml` and validate a `xr.yaml` against it:
 
 ```shell
-crossplane beta validate --cache-dir ~/.crossplane definition.yaml xr.yaml
+crossplane resource validate --cache-dir ~/.crossplane definition.yaml xr.yaml
 [✓] crossplane.jonashackt.io/v1alpha1, Kind=ObjectStorage, managed-upbound-s3 validated successfully
 Total 1 resources: 0 missing schemas, 1 success cases, 0 failure cases
 ```
@@ -1616,7 +1617,7 @@ We need to provide the provider's schemes.
 For example grab a Composition and validate it against the AWS provider:
 
 ```shell
-crossplane beta validate --cache-dir ~/.crossplane config/provider-aws-s3.yaml resources/public-bucket.yaml
+crossplane resource validate --cache-dir ~/.crossplane config/provider-aws-s3.yaml resources/public-bucket.yaml
 package schemas does not exist, downloading:  xpkg.upbound.io/upbound/provider-aws-s3:v1.1.0
 [✓] s3.aws.upbound.io/v1beta1, Kind=Bucket, crossplane-argocd-s3-bucket validated successfully
 [✓] s3.aws.upbound.io/v1beta1, Kind=BucketPublicAccessBlock, crossplane-argocd-s3-bucket-pab validated successfully
@@ -1632,7 +1633,7 @@ Total 5 resources: 0 missing schemas, 5 success cases, 0 failure cases
 We can also validate a full directory:
 
 ```shell
-crossplane beta validate --cache-dir ~/.crossplane provider-aws-s3/definition.yaml provider-aws-s3
+crossplane resource validate --cache-dir ~/.crossplane provider-aws-s3/definition.yaml provider-aws-s3
 [✓] crossplane.jonashackt.io/v1alpha1, Kind=ObjectStorage, managed-upbound-s3 validated successfully
 [!] could not find CRD/XRD for: apiextensions.crossplane.io/v1, Kind=Composition
 [!] could not find CRD/XRD for: pkg.crossplane.io/v1, Kind=Provider
@@ -1648,7 +1649,7 @@ Total 10 resources: 4 missing schemas, 6 success cases, 0 failure cases
 
 
 ```shell
-crossplane beta validate --cache-dir ~/.crossplane provider-aws-s3/config/provider-aws-s3.yaml provider-aws-s3
+crossplane resource validate --cache-dir ~/.crossplane provider-aws-s3/config/provider-aws-s3.yaml provider-aws-s3
 [!] could not find CRD/XRD for: crossplane.jonashackt.io/v1alpha1, Kind=ObjectStorage
 [!] could not find CRD/XRD for: apiextensions.crossplane.io/v1, Kind=Composition
 [!] could not find CRD/XRD for: pkg.crossplane.io/v1, Kind=Provider
@@ -1676,16 +1677,16 @@ https://blog.crossplane.io/building-crossplane-composition-functions-to-empower-
 
 ##### Composition Validation
 
-To be able to validate Compositions & XRs, we need another command in the game: `crossplane beta render`:
+To be able to validate Compositions & XRs, we need another command in the game: `crossplane composition render`:
 
 https://docs.crossplane.io/latest/cli/command-reference/#validate-render-command-output
 
-> You can pipe the output of `crossplane beta render` into `crossplane beta validate` to validate complete Crossplane resource pipelines, including XRs, compositions and composition functions.
+> You can pipe the output of `crossplane composition render` into `crossplane resource validate` to validate complete Crossplane resource pipelines, including XRs, compositions and composition functions.
 
-Therefore we need to use the `--include-full-xr` command with `crossplane beta render` and the `-` option with `crossplane beta validate` like that:
+Therefore we need to use the `--include-full-xr` command with `crossplane composition render` and the `-` option with `crossplane resource validate` like that:
 
 ```shell
-crossplane beta render composition.yaml --include-full-xr | crossplane beta validate config/provider-aws-s3.yaml -
+crossplane composition render composition.yaml --include-full-xr | crossplane resource validate config/provider-aws-s3.yaml -
 ```
 
 
