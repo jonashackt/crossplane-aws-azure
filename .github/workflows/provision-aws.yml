@@ -3,7 +3,7 @@ name: provision-aws
 on: [push]
 
 env:
-  KIND_NODE_VERSION: v1.35.1
+  KIND_NODE_VERSION: v1.36.1
   BUCKET_NAME: spring2026-bucket
   # AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -41,8 +41,10 @@ jobs:
           helm upgrade --install crossplane --namespace crossplane-system crossplane-install --create-namespace
 
           echo "### Install crossplane CLI"
-          curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/master/install.sh" | sh
+          curl -sL "https://cli.crossplane.io/install.sh" | sh
           sudo mv crossplane /usr/local/bin
+          echo "### Run 'crossplane version'"
+          crossplane version
 
       - name: Check crossplane status
         run: |
@@ -114,13 +116,13 @@ jobs:
           sleep 30
 
           echo "### Trace status of AWS S3 Bucket"
-          crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
+          crossplane resource trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 
           echo "### Wait until XR (Composite) is ready (giving it 8 mins, since resources consumption of the AWS Upbound provider seems to be way higher than the crossplane-contrib one)"
           kubectl wait --for=condition=ready --timeout=480s composite managed-upbound-s3
 
           echo "### Trace status of AWS S3 Bucket"
-          crossplane beta trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
+          crossplane resource trace objectstorage.crossplane.jonashackt.io/managed-upbound-s3 -o wide
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
