@@ -44,6 +44,7 @@ jobs:
           echo "### Install crossplane CLI"
           curl -sL "https://cli.crossplane.io/install.sh" | sh
           sudo mv crossplane /usr/local/bin
+          echo "### Run 'crossplane version'"
           crossplane version
 
       - name: Check crossplane status

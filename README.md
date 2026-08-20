@@ -28,7 +28,7 @@ Here are the brief steps to spin up Crossplane and provision an S3 Bucket on AWS
 ## DEMO AWS No.1
 
 # Create a kind cluster^
-kind create cluster --image kindest/node:v1.35.1 --wait 5m
+kind create cluster --image kindest/node:v1.36.1 --wait 5m
 kubectl get crd
 
 # Install Crossplane
