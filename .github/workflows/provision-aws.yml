@@ -3,7 +3,6 @@ name: provision-aws
 on: [push]
 
 env:
-  KIND_NODE_VERSION: v1.36.1
   BUCKET_NAME: spring2026-bucket
   # AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -27,15 +26,15 @@ jobs:
         run: echo "branchbucketsuffix=${BRANCH##*/}" >> $GITHUB_OUTPUT
 
       - name: Spin up kind
-        run: |
-          echo "### Create kind cluster"
-          kind create cluster --image "kindest/node:$KIND_NODE_VERSION" --wait 5m
-
-          echo "### Let's try to access our kind cluster via kubectl"
-          kubectl get nodes
+        uses: helm/kind-action@v1.15.1
+        with:
+          wait: 5m
       
       - name: Install crossplane via Helm & install crossplane CLI
         run: |
+          echo "### Let's try to access our kind cluster via kubectl"
+          kubectl get nodes
+
           echo "### Install crossplane via Helm"
           helm dependency update crossplane-install
           helm upgrade --install crossplane --namespace crossplane-system crossplane-install --create-namespace
