@@ -135,12 +135,13 @@ jobs:
           curl "http://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}.s3-website.eu-central-1.amazonaws.com"
 
       - name: Delete index.html and remove Claim for S3 Bucket deletion
+        if: always() # also delete resources if previous steps failed, to avoid leaving dangling resources
         run: |
-          echo "### Delete index.html from S3 Bucket"
-          aws s3 rm "s3://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}/index.html"
+          echo "### Delete index.html from S3 Bucket (ignoring errors, since bucket or file might not exist if previous steps failed)"
+          aws s3 rm "s3://$BUCKET_NAME-${{ steps.split.outputs.branchbucketsuffix }}/index.html" || true
 
           echo "### Remove CompositeResourceClaim to delete S3 Bucket"
-          kubectl delete -f upbound/provider-aws-s3/xr.yaml
+          kubectl delete -f upbound/provider-aws-s3/xr.yaml --ignore-not-found
 
           echo "### Give the deletion process some time by having a look into the crossplane status"
           kubectl get crossplane 
