@@ -31,7 +31,7 @@ jobs:
           echo "storageaccountname=account$(echo -n "$BRANCH" | sha256sum | cut -c1-10)" >> $GITHUB_OUTPUT
 
       - name: Spin up kind
-        uses: helm/kind-action@v1.15.1
+        uses: helm/kind-action@v1.15.2
         with:
           wait: 5m
       
