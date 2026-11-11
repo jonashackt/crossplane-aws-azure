@@ -106,7 +106,7 @@ jobs:
           kubectl apply -f crossplane-contrib/function-patch-and-transform/function.yaml
 
           echo "### Wait until Function is healthy"
-          kubectl wait --for=condition=healthy --timeout=120s function crossplane-contrib-function-patch-and-transform
+          kubectl wait --for=condition=healthy --timeout=300s function crossplane-contrib-function-patch-and-transform
 
           echo "### Create Composition"
           kubectl apply -f upbound/provider-azure-storage/composition.yaml
@@ -142,6 +142,23 @@ jobs:
 
           echo "### Show crossplane overall status"
           kubectl get crossplane 
+
+      - name: Debug output on failure
+        if: failure()
+        run: |
+          echo "--- Crossplane Providers, Functions & their Revisions"
+          kubectl get providers,providerrevisions,functions,functionrevisions -o wide || true
+          kubectl describe providers || true
+          kubectl describe functions || true
+          kubectl describe functionrevisions || true
+          echo "--- XR & managed resources"
+          kubectl get composite,managed || true
+          kubectl describe storageazure.crossplane.jonashackt.io managed-storage-account || true
+          echo "--- Pods & Events in crossplane-system"
+          kubectl get pods -n crossplane-system -o wide || true
+          kubectl get events -n crossplane-system --sort-by=.lastTimestamp || true
+          echo "--- Crossplane logs"
+          kubectl logs -n crossplane-system -l app=crossplane --tail=100 || true
 
       - name: Delete Resources
         if: always() # also delete resources if previous steps failed, to avoid leaving dangling resources
